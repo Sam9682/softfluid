@@ -1,0 +1,13 @@
+[Unit]
+Description=SWAutomorph Control Plan
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/home/ubuntu/ai-swautomorph/scripts/start_swautomorph_controlplan.sh
+ExecStop=/home/ubuntu/ai-swautomorph/scripts/stop_swautomorph_controlplan.sh
+WorkingDirectory=/home/ubuntu/ai-swautomorph
+User=ubuntu
+
+[Install]
+WantedBy=multi-user.target
