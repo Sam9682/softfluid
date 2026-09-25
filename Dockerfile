@@ -31,8 +31,9 @@ RUN chown -R ubuntu:ubuntu /app
 # Switch to ubuntu user
 USER ubuntu
 
-# Expose port
-EXPOSE "${HTTP_PORT:-6000}:80"
+# Expose the internal HTTP port. The 12 external ports (6 HTTP + 6 HTTPS)
+# are mapped to the container's internal 80/443 via docker-compose.
+EXPOSE 80
 
 # Set environment variables
 ENV FLASK_APP=ControlPlanFlaskApp.py

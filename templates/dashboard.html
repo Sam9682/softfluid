@@ -3,7 +3,7 @@
 {% block title %}{{ get_text('dashboard') }} - {{ PLTF_NAME }}{% endblock %}
 
 {% block content %}
-<div class="dashboard-layout">
+<div class="dashboard-layout vertical">
     <div class="main-panel">
         <div class="dashboard-container">
 
@@ -17,55 +17,64 @@
         </div>
     
     <div class="applications-grid">
-        {% for app in applications %}
-        <div class="app-card">
-            <input type="hidden" class="application_status" value="is_not_cloned">
-            {% if username == 'admin' %}
-            <div class="app-actions">
-                <button onclick="editApp({{ app[0] }}, '{{ app[1] }}', '{{ app[2] }}', '{{ app[3] or '' }}', '{{ app[4] or '' }}', {{ app[6] or 50 }}, {{ app[7] or 'null' }}, {{ app[8] or 'null' }}, {{ app[9] or 'null' }}, {{ app[10] or 'null' }}, '{{ app[11] or 'Not yet deployed' }}')" class="btn-icon" title="Edit">
-                    ✏️
-                </button>
-                <button onclick="deleteApp({{ app[0] }}, '{{ app[1] }}')" class="btn-icon" title="Delete">
-                    🗑️
-                </button>
-            </div>
-            {% else %}
-            <div class="app-actions">
-                <button onclick="viewApp({{ app[0] }}, '{{ app[1] }}', '{{ app[2] }}', '{{ app[3] or '' }}', '{{ app[4] or '' }}', '{{ app[5] or '' }}', '{{ app[11] or 'Not yet deployed' }}')" class="btn-icon" title="View Details">
-                    👁️
-                </button>
-            </div>
-            {% endif %}
-            <h3>{{ app[1] }}</h3>
-            <p> (Id={{ app[0] }}) {{ app[3] or get_text('no_description') }}</p>
-            <div class="gitea-info" id="gitea-{{ app[1] | replace(' ', '-') | lower }}" style="margin: 10px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; font-size: 12px;">
-                <div style="margin-bottom: 5px;">
-                    <strong>📦 {{ get_text('gitea_branch') }}:</strong> 
-                    <select class="gitea-branch-select" style="margin-left: 5px; padding: 2px 5px; border-radius: 3px; border: 1px solid #ddd; max-width: 100%; width: auto; box-sizing: border-box;">
-                        <option value="">Loading...</option>
-                    </select>
-                </div>
-                <div style="word-wrap: break-word; overflow-wrap: break-word;"><strong>🔖 {{ get_text('local_active_version') }}:</strong> <span class="gitea-active-version" style="word-wrap: break-word;">Loading...</span></div>
-            </div>
-            <div class="app-buttons">
-                <a href="{{ app[2] }}" target="_blank" class="btn btn-primary" id="openBtn-{{ app[1] | replace(' ', '-') | lower }}">{{ get_text('open_application') }}</a>
-                {% if app[4] %}
-                <div class="deployment-buttons">
-                    <button onclick="cloneFromSelectedBranch('{{ app[1] }}', {{ app[6] or 50 }})" class="btn btn-secondary btn-small" id="cloneBtn-{{ app[1] | replace(' ', '-') | lower }}">📥 {{ get_text('clone') }}</button>
-                    {% if username == 'admin' %}
-                    <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'start', null, {{ app[7] or 30 }})" class="btn btn-success btn-small" id="startBtn-{{ app[1] | replace(' ', '-') | lower }}">▶️ {{ get_text('start') }}</button>
-                    <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'stop', null, null, {{ app[9] or 10 }})" class="btn btn-danger btn-small" id="stopBtn-{{ app[1] | replace(' ', '-') | lower }}">⏹️ {{ get_text('stop') }}</button>
-                    <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'restart')" class="btn btn-warning btn-small" id="restartBtn-{{ app[1] | replace(' ', '-') | lower }}">🔄 {{ get_text('restart') }}</button>
-                    <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'ps')" class="btn btn-info btn-small" id="psBtn-{{ app[1] | replace(' ', '-') | lower }}">📊 {{ get_text('status') }}</button>
-                    <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'logs')" class="btn btn-secondary btn-small" id="logsBtn-{{ app[1] | replace(' ', '-') | lower }}">📋 {{ get_text('logs') }}</button>
-                    <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'backup_database')" class="btn btn-secondary btn-small" id="backupDbBtn-{{ app[1] | replace(' ', '-') | lower }}" style="display: none;">💾 {{ get_text('backup_db') }}</button>
-                    <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'restore_database')" class="btn btn-secondary btn-small" id="restoreDbBtn-{{ app[1] | replace(' ', '-') | lower }}" style="display: none;">♻️ {{ get_text('restore_db') }}</button>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
+        <div style="overflow-x: auto;">
+        <table class="applications-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>{{ get_text('application_name') }}</th>
+                    <th>{{ get_text('description') }}</th>
+                    <th>{{ get_text('gitea_branch') }}</th>
+                    <th>{{ get_text('local_active_version') }}</th>
+                    <th>{{ get_text('actions') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in applications %}
+                <tr class="app-card" id="appRow-{{ app[1] | replace(' ', '-') | lower }}">
+                    <td class="app-id"><input type="hidden" class="application_status" value="is_not_cloned">{{ app[0] }}</td>
+                    <td class="app-name">
+                        <strong class="app-card-name">{{ app[1] }}</strong>
+                    </td>
+                    <td class="app-description">{{ app[3] or get_text('no_description') }}</td>
+                    <td class="app-branch">
+                        <div class="gitea-info" id="gitea-{{ app[1] | replace(' ', '-') | lower }}">
+                            <select class="gitea-branch-select">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                    </td>
+                    <td class="app-version">
+                        <span class="gitea-active-version" id="version-{{ app[1] | replace(' ', '-') | lower }}">Loading...</span>
+                    </td>
+                    <td class="app-table-actions">
+                        <div class="app-action-buttons">
+                            <a href="{{ app[2] }}" target="_blank" class="btn btn-primary btn-small" id="openBtn-{{ app[1] | replace(' ', '-') | lower }}">🔗 {{ get_text('open_application') }}</a>
+                            {% if app[4] %}
+                            <button onclick="cloneFromSelectedBranch('{{ app[1] }}', {{ app[6] or 50 }})" class="btn btn-secondary btn-small" id="cloneBtn-{{ app[1] | replace(' ', '-') | lower }}">📥 {{ get_text('clone') }}</button>
+                            {% if username == 'admin' %}
+                            <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'start', null, {{ app[7] or 30 }})" class="btn btn-success btn-small" id="startBtn-{{ app[1] | replace(' ', '-') | lower }}">▶️ {{ get_text('start') }}</button>
+                            <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'stop', null, null, {{ app[9] or 10 }})" class="btn btn-danger btn-small" id="stopBtn-{{ app[1] | replace(' ', '-') | lower }}">⏹️ {{ get_text('stop') }}</button>
+                            <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'restart')" class="btn btn-warning btn-small" id="restartBtn-{{ app[1] | replace(' ', '-') | lower }}">🔄 {{ get_text('restart') }}</button>
+                            <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'ps')" class="btn btn-info btn-small" id="psBtn-{{ app[1] | replace(' ', '-') | lower }}" title="{{ get_text('status') }}">📊</button>
+                            <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'logs')" class="btn btn-secondary btn-small" id="logsBtn-{{ app[1] | replace(' ', '-') | lower }}" title="{{ get_text('logs') }}">📋</button>
+                            <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'backup_database')" class="btn btn-secondary btn-small" id="backupDbBtn-{{ app[1] | replace(' ', '-') | lower }}" style="display: none;" title="{{ get_text('backup_db') }}">💾</button>
+                            <button onclick="deploy_sh_executionCmdInApp('{{ app[1] }}', '', 'restore_database')" class="btn btn-secondary btn-small" id="restoreDbBtn-{{ app[1] | replace(' ', '-') | lower }}" style="display: none;" title="{{ get_text('restore_db') }}">♻️</button>
+                            {% endif %}
+                            {% endif %}
+                            {% if username == 'admin' %}
+                            <button onclick="editApp({{ app[0] }}, '{{ app[1] }}', '{{ app[2] }}', '{{ app[3] or '' }}', '{{ app[4] or '' }}', {{ app[6] or 50 }}, {{ app[7] or 'null' }}, {{ app[8] or 'null' }}, {{ app[9] or 'null' }}, {{ app[10] or 'null' }}, '{{ app[11] or 'Not yet deployed' }}')" class="btn btn-secondary btn-small" title="Edit">✏️</button>
+                            <button onclick="deleteApp({{ app[0] }}, '{{ app[1] }}')" class="btn btn-danger btn-small" title="Delete">🗑️</button>
+                            {% else %}
+                            <button onclick="viewApp({{ app[0] }}, '{{ app[1] }}', '{{ app[2] }}', '{{ app[3] or '' }}', '{{ app[4] or '' }}', '{{ app[5] or '' }}', '{{ app[11] or 'Not yet deployed' }}')" class="btn btn-secondary btn-small" title="View Details">👁️</button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         </div>
-        {% endfor %}
     </div>
     
     {% if not applications %}
@@ -474,8 +483,9 @@
             <form id="updateAppManagementForm">
                 <input type="hidden" id="editAppMgmtId">
                 <div class="form-group">
-                    <label>Application ID:</label>
-                    <div id="editAppMgmtIdentity" class="readonly-field" style="color: green;"></div>
+                    <label for="editAppMgmtNewId">Application ID:</label>
+                    <input type="number" id="editAppMgmtNewId" min="1" required style="color: green; font-weight: bold;">
+                    <small id="editAppMgmtIdError" style="color: red; display: none;">This ID is already used by another application.</small>
                 </div>
                 <div class="form-group">
                     <label for="editAppMgmtName">Application Name:</label>
@@ -483,7 +493,7 @@
                 </div>
                 <div class="form-group">
                     <label for="editAppMgmtUrl">URL:</label>
-                    <input type="url" id="editAppMgmtUrl" placeholder="http://example.swautomorph.com">
+                    <input type="text" id="editAppMgmtUrl" placeholder="http://example.swautomorph.com">
                 </div>
                 <div class="form-group">
                     <label for="editAppMgmtSwautomorphUrl">SwAutoMorph URL:</label>
@@ -634,7 +644,27 @@
                 </div>
                 <div class="form-group">
                     <label for="serviceReplicas">Desired Replicas:</label>
-                    <input type="number" id="serviceReplicas" min="0" max="10" value="1">
+                    <input type="number" id="serviceReplicas" min="1" max="10" value="1">
+                </div>
+                <!-- Deployment Mode Switch -->
+                <div class="form-group">
+                    <label>Deployment Mode:</label>
+                    <div class="deployment-mode-switch" style="display: flex; gap: 10px; margin-top: 8px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 10px 15px; border: 2px solid #3498db; border-radius: 8px; background: #eaf4fd; flex: 1;" id="deployModeLabel1">
+                            <input type="radio" name="deploymentMode" value="multi_server" checked onchange="onDeploymentModeChange()">
+                            <div>
+                                <strong>🖥️ Multi-Server</strong><br>
+                                <small style="color: #555;">Start Docker replicas across available servers (one per server)</small>
+                            </div>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 10px 15px; border: 2px solid #dee2e6; border-radius: 8px; background: #f8f9fa; flex: 1;" id="deployModeLabel2">
+                            <input type="radio" name="deploymentMode" value="multi_user_local" onchange="onDeploymentModeChange()">
+                            <div>
+                                <strong>👥 Multi-User Local</strong><br>
+                                <small style="color: #555;">Create replica users on current server, clone &amp; start Docker in each user environment</small>
+                            </div>
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="serviceEnvironment">Environment Variables (JSON):</label>
@@ -677,6 +707,17 @@
                 <label for="filterApplicationId">Application:</label>
                 <select id="filterApplicationId" onchange="loadDeploymentsTable()">
                     <option value="">All Applications</option>
+                </select>
+            </div>
+            <div>
+                <label for="filterStatus">Status:</label>
+                <select id="filterStatus" onchange="loadDeploymentsTable()">
+                    <option value="">All Statuses</option>
+                    <option value="RUNNING">Running</option>
+                    <option value="STOPPED">Stopped</option>
+                    <option value="CLONED">Cloned</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="FAILED">Failed</option>
                 </select>
             </div>
             <button class="btn btn-secondary" onclick="loadDeploymentsTable()">Refresh</button>
@@ -741,7 +782,32 @@
     {% if username == 'admin' %}
     <div id="settingsSection" class="tab-content" style="display: none;">
         <h2>⚙️ Settings</h2>
-        
+
+        <!-- Runtime Type Setting -->
+        <div class="config-form" style="display: block; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px solid #dee2e6;">
+            <h3>🐳 Container Runtime Type</h3>
+            <p style="margin-bottom: 10px; color: #555;">
+                Select the container runtime used for deploying applications and running serverless jobs.
+            </p>
+            <div class="form-group">
+                <label for="runtimeTypeSelect"><strong>Runtime Type:</strong></label>
+                <select id="runtimeTypeSelect" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; min-width: 200px;">
+                    <option value="runc">runc — Standard Docker containers</option>
+                    <option value="kata">kata — MicroVM (Kata Containers)</option>
+                </select>
+            </div>
+            <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 4px; border: 1px solid #ffc107;">
+                <small>
+                    <strong>runc</strong>: Default OCI runtime. Runs standard Docker containers with shared kernel — lightweight and fast.<br>
+                    <strong>kata</strong>: Kata Containers runtime. Each container runs inside a dedicated lightweight MicroVM, providing stronger workload isolation with hardware virtualization boundaries.
+                </small>
+            </div>
+            <button type="button" class="btn btn-primary" style="margin-top: 10px;" onclick="saveRuntimeType()">Save Runtime Type</button>
+            <span id="runtimeTypeSaveStatus" style="margin-left: 10px; color: green; display: none;">✓ Saved</span>
+        </div>
+
+        <hr style="margin: 20px 0;">
+
         <div class="settings-controls">
             <button class="btn btn-primary" onclick="showAddConfigForm()">Add Parameter</button>
             <button class="btn btn-secondary" onclick="refreshConfigTable()">Refresh</button>
@@ -792,6 +858,138 @@
     </div>
     {% endif %}
     
+    <!-- Serverless Docker Execution Section -->
+    <div id="orchestratorServerlessSection" class="tab-content" style="display: none;">
+        <div class="section-header">
+            <h2>🚀 Application Orchestrator - Serverless Jobs</h2>
+            <button class="btn btn-secondary" onclick="refreshJobList()">🔄 Refresh</button>
+        </div>
+
+        <!-- Available Serverless Links Panel -->
+        <div id="serverlessLinksPanel" style="margin-bottom: 20px; padding: 15px; background: #eef6ff; border-radius: 5px; border: 1px solid #b8daff;">
+            <h3 style="margin-top: 0;">🔗 softfluid-serverless-* Endpoints (Running)</h3>
+            <div id="serverlessLinksContent">
+                <p>Loading available endpoints...</p>
+            </div>
+        </div>
+
+        <!-- Metrics Summary Panel -->
+        <div id="serverlessMetricsPanel" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px solid #ddd;">
+            <h3 style="margin-top: 0;">📊 Metrics</h3>
+            <div id="serverlessMetricsContent">
+                <p>Loading metrics...</p>
+            </div>
+        </div>
+
+        <!-- Job Submission Form -->
+        <div class="user-form" style="display: block; margin-bottom: 20px;">
+            <h3>Submit New Job</h3>
+            <form id="serverlessJobForm" onsubmit="event.preventDefault(); submitServerlessJob();">
+                <div class="form-group">
+                    <label for="serverlessTargetLink">Target Endpoint (required):</label>
+                    <select id="serverlessTargetLink" required>
+                        <option value="">-- Loading links... --</option>
+                    </select>
+                    <small style="color: #666;">Select the softfluid-serverless-brik endpoint to run the job on</small>
+                </div>
+                <div class="form-group">
+                    <label for="serverlessImage">Image (required):</label>
+                    <input type="text" id="serverlessImage" placeholder="e.g. docker.io/library/python:3.11" required>
+                </div>
+                <div class="form-group">
+                    <label for="serverlessCommand">Command (required, one command per line):</label>
+                    <textarea id="serverlessCommand" rows="10" placeholder="e.g.&#10;python script.py --flag&#10;echo hello world" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="serverlessEnv">Environment Variables (JSON, optional):</label>
+                    <textarea id="serverlessEnv" rows="3" placeholder='{"KEY": "value", "OTHER": "val2"}'></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="serverlessTimeout">Timeout in seconds (optional):</label>
+                    <input type="number" id="serverlessTimeout" min="1" max="3600" placeholder="300">
+                </div>
+                <button type="submit" class="btn btn-primary">Submit Job</button>
+            </form>
+        </div>
+
+        <!-- Job List Table -->
+        <div class="table-container" style="margin-bottom: 20px;">
+            <h3>Jobs</h3>
+            <table class="users-table" id="serverlessJobsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Image</th>
+                        <th>Target</th>
+                        <th>Status</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="serverlessJobsBody">
+                    <tr><td colspan="6">No jobs loaded yet. Click Refresh to load.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Job Detail/Result View Panel -->
+        <div id="serverlessJobDetail" style="display: none; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px solid #ddd;">
+            <h3>Job Details</h3>
+            <div id="serverlessJobDetailContent">
+                <p>Select a job to view details.</p>
+            </div>
+            <button class="btn btn-secondary" onclick="document.getElementById('serverlessJobDetail').style.display='none';">Close</button>
+        </div>
+    </div>
+
+    <!-- Template Marketplace Section (Onboarding, Req 8.2-8.6) -->
+    <div id="marketplaceSection" class="tab-content" style="display: none;">
+        <div class="section-header">
+            <h2>🛒 {{ get_text('marketplace') }}</h2>
+            <button class="btn btn-secondary" onclick="loadTemplates()">🔄 {{ get_text('refresh') }}</button>
+        </div>
+
+        <!-- Marketplace Templates Panel -->
+        <div id="marketplacePanel" style="margin-bottom: 20px; padding: 15px; background: #eef6ff; border-radius: 5px; border: 1px solid #b8daff;">
+            <h3 style="margin-top: 0;">🛒 {{ get_text('marketplace') }}</h3>
+            <p style="font-size: 13px; color: #666; margin-top: 0;">{{ get_text('marketplace_desc') }}</p>
+            <div id="marketplaceContent">
+                <p>{{ get_text('loading_templates') }}</p>
+            </div>
+        </div>
+
+        <!-- Marketplace Deploy Result Panel -->
+        <div id="marketplaceResultPanel" style="display: none; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px solid #ddd;">
+            <h3 style="margin-top: 0;">{{ get_text('deploy') }}</h3>
+            <div id="marketplaceResultContent"></div>
+        </div>
+    </div>
+
+    <!-- Sandbox / Demo Mode Section (Onboarding, Req 1.6, 2.1, 2.2, 3.3) -->
+    <div id="sandboxSection" class="tab-content" style="display: none;">
+        <div class="section-header">
+            <h2>🧪 {{ get_text('sandbox') }}</h2>
+            <button class="btn btn-secondary" onclick="loadSandboxStatus()">🔄 {{ get_text('refresh') }}</button>
+        </div>
+
+        <!-- Sandbox Controls Panel -->
+        <div id="sandboxControlsPanel" style="margin-bottom: 20px; padding: 15px; background: #eef6ff; border-radius: 5px; border: 1px solid #b8daff;">
+            <h3 style="margin-top: 0;">🧪 {{ get_text('sandbox') }}</h3>
+            <p style="font-size: 13px; color: #666; margin-top: 0;">{{ get_text('sandbox_desc') }}</p>
+            <button class="btn btn-primary" onclick="sandboxAction('provision')">🚀 {{ get_text('sandbox_provision') }}</button>
+            <button class="btn btn-warning" onclick="sandboxAction('reset')">🔄 {{ get_text('sandbox_reset') }}</button>
+            <button class="btn btn-danger" onclick="sandboxAction('teardown')">🗑️ {{ get_text('sandbox_teardown') }}</button>
+        </div>
+
+        <!-- Sandbox Status Panel -->
+        <div id="sandboxStatusPanel" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px solid #ddd;">
+            <h3 style="margin-top: 0;">📊 {{ get_text('sandbox_status') }}</h3>
+            <div id="sandboxStatusContent">
+                <p>{{ get_text('sandbox_loading') }}</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Deployment Logs Section -->
     <!-- Logs section removed from main panel -->
         </div>
@@ -800,10 +998,6 @@
     <!-- Virtual Agents Panel -->
     <div class="agents-panel" id="agentsPanel">
         <div id="virtualAgentsPanel" class="virtual-agents-panel" style="background-color: rgb(177, 177, 177);">
-            <div class="panel-header">
-                <h3>🤖 {{ get_text('virtual_agents') }}</h3>
-                <button id="togglePanel" class="toggle-btn" onclick="toggleAgentsPanel()">−</button>
-            </div>
             
             <div class="panel-content">
                 <!-- Unified Agent Area -->
@@ -823,6 +1017,7 @@
                             <option value="LOGS">{{ get_text('display_logs_option') }}</option>
                             <option value="PS">{{ get_text('display_ps_option') }}</option>
                         </select>
+                        <button id="togglePanel" class="toggle-btn" onclick="toggleAgentsPanel()" title="Toggle panel">−</button>
                     </div>
                         <!-- Persistent message container -->
                         <div class="message operations-assistant" id="persistentMessageContainer" style="width: 100%; height: 100%;">
@@ -910,6 +1105,7 @@
 
 
 
+<script src="{{ url_for('static', filename='js/dashboard_functions.js') }}"></script>
 <script>
 // Layout toggle function
 function toggleLayout() {
@@ -935,6 +1131,11 @@ const APP_NOT_DEPLOYED_MESSAGE = 'deployApp.sh not found';
 window.showDashboardTab = showTab;
 
 function showTab(tab) {
+    // Stop serverless auto-refresh when switching away from that tab
+    if (typeof stopServerlessAutoRefresh === 'function') {
+        stopServerlessAutoRefresh();
+    }
+    
     // Hide all sections
     document.getElementById('appsSection').style.display = 'none';
     document.getElementById('billingSection').style.display = 'none';
@@ -962,6 +1163,15 @@ function showTab(tab) {
     
     const settingsSection = document.getElementById('settingsSection');
     if (settingsSection) settingsSection.style.display = 'none';
+    
+    const orchestratorServerlessSection = document.getElementById('orchestratorServerlessSection');
+    if (orchestratorServerlessSection) orchestratorServerlessSection.style.display = 'none';
+    
+    const marketplaceSection = document.getElementById('marketplaceSection');
+    if (marketplaceSection) marketplaceSection.style.display = 'none';
+    
+    const sandboxSection = document.getElementById('sandboxSection');
+    if (sandboxSection) sandboxSection.style.display = 'none';
     
     // Control virtual agents panel visibility
     const agentsPanel = document.getElementById('agentsPanel');
@@ -1022,6 +1232,24 @@ function showTab(tab) {
         if (settingsSection) {
             settingsSection.style.display = 'block';
             loadConfigTable();
+            loadRuntimeType();
+        }
+    } else if (tab === 'orchestratorServerless') {
+        if (orchestratorServerlessSection) {
+            orchestratorServerlessSection.style.display = 'block';
+            refreshJobList();
+            loadServerlessMetrics();
+            startServerlessAutoRefresh();
+        }
+    } else if (tab === 'marketplace') {
+        if (marketplaceSection) {
+            marketplaceSection.style.display = 'block';
+            loadTemplates();
+        }
+    } else if (tab === 'sandbox') {
+        if (sandboxSection) {
+            sandboxSection.style.display = 'block';
+            loadSandboxStatus();
         }
     }
     
@@ -1032,7 +1260,7 @@ function showTab(tab) {
     
     // Only close dropdowns if we're actually switching tabs within the dashboard
     // Don't close dropdowns for Help menu navigation since those are external links
-    if (tab === 'apps' || tab === 'billing' || tab === 'security' || tab === 'users' || tab === 'appManagement' || tab === 'servers' || tab === 'orchestrator' || tab === 'deployments' || tab === 'database') {
+    if (tab === 'apps' || tab === 'billing' || tab === 'security' || tab === 'users' || tab === 'appManagement' || tab === 'servers' || tab === 'orchestrator' || tab === 'deployments' || tab === 'database' || tab === 'orchestratorServerless') {
         const configDropdown = document.getElementById('navConfigDropdown');
         const helpDropdown = document.getElementById('navHelpDropdown');
         if (configDropdown) configDropdown.style.display = 'none';
@@ -1055,7 +1283,7 @@ function loadUsers() {
                 const status = user.suspended ? 'Suspended' : 'Active';
                 const statusClass = user.suspended ? 'status-suspended' : 'status-active';
                 const twofa = user.totp_enabled ? '🔒 TOTP' : (user.email_2fa_enabled ? '📧 Email' : '❌ Off');
-                html += `<tr>
+                html += `<tr style="${user.suspended ? 'background-color: #f8d7da;' : ''}">
                     <td>${user.id}</td>
                     <td>${user.username}</td>
                     <td>${user.email}</td>
@@ -1076,6 +1304,7 @@ function loadUsers() {
             });
             html += '</tbody></table>';
             grid.innerHTML = html;
+            makeSortable(grid.querySelector('table.users-table'));
         })
         .catch(error => {
             document.getElementById('usersGrid').innerHTML = '<p>Error loading users.</p>';
@@ -1762,20 +1991,25 @@ function assignApp(userId, appId) {
         // Application assigned successfully, now trigger clone
         alert(`Application "${appDetails.name}" assigned successfully. Starting automatic clone...`);
         
-        // Trigger the clone operation for the target user
-        const cloneData = {
-            action: 'clone',
-            application_name: appDetails.name,
-            git_url: appDetails.git_url,
-            server_id: 1, // Default server
-            stream: false,
-            target_user_id: userId  // Pass the target user ID for admin deployment
-        };
-        
-        return fetch('/api/deployments', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(cloneData)
+        // Resolve a real server id before triggering the clone; on allocation
+        // failure the thrown error propagates to the chain's .catch so no clone
+        // request is sent.
+        return getAvailableServerId(appDetails.name).then(serverId => {
+            // Trigger the clone operation for the target user
+            const cloneData = {
+                action: 'clone',
+                application_name: appDetails.name,
+                git_url: appDetails.git_url,
+                server_id: serverId, // Real server id resolved from the allocate endpoint
+                stream: false,
+                target_user_id: userId  // Pass the target user ID for admin deployment
+            };
+            
+            return fetch('/api/deployments', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(cloneData)
+            });
         });
     })
     .then(response => {
@@ -1827,30 +2061,32 @@ function deploy_sh_executionCmdInApp(appName, gitUrl, action, repoSize, startDur
     
     appendLog(`\n=== ${action.toUpperCase()} ${appName} ===`);
     
-    // For clone action, proceed directly without server allocation
+    // For clone action, resolve a real server id before sending the request
     if (action === 'clone') {
         console.log('Processing clone action for:', appName);
         
         // Store app name for refresh after clone completes
         window.lastClonedApp = appName;
         
-        const data = {
-            action: action,
-            application_name: appName,
-            git_url: gitUrl,
-            server_id: 1, // Default server
-            stream: true
-        };
-        
-        console.log('Sending clone request with data:', data);
-        
         // Don't switch to logs tab for clone operations - keep applications panel visible
         appendLog(`\n=== ${action.toUpperCase()} ${appName} ===`);
         
-        fetch('/api/deployments', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
+        getAvailableServerId(appName).then(serverId => {
+            const data = {
+                action: action,
+                application_name: appName,
+                git_url: gitUrl,
+                server_id: serverId,
+                stream: true
+            };
+            
+            console.log('Sending clone request with data:', data);
+            
+            return fetch('/api/deployments', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
         })
         .then(response => {
             console.log('Clone response received:', response.status);
@@ -2216,18 +2452,23 @@ function loadAvailableApplications() {
                 return;
             }
             
-            // Display available applications
-            availableAppsGrid.innerHTML = apps.map(app => `
-                <div class="app-card" style="opacity: 0.8; border: 2px dashed #ddd;">
-                    <div class="app-actions">
-                        <button onclick="viewAvailableApp(${app.id}, '${app.name.replace(/'/g, "\\'")}', '${(app.description || '').replace(/'/g, "\\'")}', '${(app.git_url || '').replace(/'/g, "\\'")}', ${app.git_repo_size})" class="btn-icon" title="${translations.viewDetails}">
-                            👁️
-                        </button>
-                    </div>
-                    <h3>🔒 ${app.name}</h3>
-                    <p>${app.description || translations.noDescription}</p>
-                </div>
-            `).join('');
+            // Display available applications as a table matching the main apps list
+            let tableHtml = `<div style="overflow-x: auto;"><table class="applications-table"><thead><tr><th>ID</th><th>{{ get_text('application_name') }}</th><th>{{ get_text('description') }}</th><th>{{ get_text('actions') }}</th></tr></thead><tbody>`;
+            apps.forEach(app => {
+                tableHtml += `<tr class="app-card" style="opacity: 0.8;">
+                    <td class="app-id">${app.id}</td>
+                    <td class="app-name"><strong class="app-card-name">🔒 ${app.name}</strong></td>
+                    <td class="app-description">${app.description || translations.noDescription}</td>
+                    <td class="app-table-actions">
+                        <div class="app-action-buttons">
+                            <button onclick="viewAvailableApp(${app.id}, '${app.name.replace(/'/g, "\\'")}', '${(app.description || '').replace(/'/g, "\\'")}', '${(app.git_url || '').replace(/'/g, "\\'")}', ${app.git_repo_size})" class="btn btn-secondary btn-small" title="${translations.viewDetails}">👁️ ${translations.viewDetails}</button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            tableHtml += '</tbody></table></div>';
+            availableAppsGrid.innerHTML = tableHtml;
+            makeSortable(availableAppsGrid.querySelector('table'));
         })
         .catch(error => {
             console.error('Error loading available applications:', error);
@@ -2299,7 +2540,7 @@ function viewAvailableApp(appId, appName, description, gitUrl, gitRepoSize) {
 function loadAllGiteaInfo() {
     const appCards = document.querySelectorAll('.app-card');
     appCards.forEach(card => {
-        const appName = card.querySelector('h3').textContent;
+        const appName = card.querySelector('.app-card-name').textContent;
         loadGiteaInfo(appName);
     });
 }
@@ -2312,7 +2553,8 @@ function loadGiteaInfo(appName) {
             if (!giteaDiv) return;
             
             const branchSelect = giteaDiv.querySelector('.gitea-branch-select');
-            const activeVersionSpan = giteaDiv.querySelector('.gitea-active-version');
+            const appRow = giteaDiv.closest('.app-card') || giteaDiv.parentElement;
+            const activeVersionSpan = appRow ? appRow.querySelector('.gitea-active-version') : null;
             
             let history = data.modification_history;
             if (typeof history === 'string') {
@@ -2329,11 +2571,13 @@ function loadGiteaInfo(appName) {
                     
                     // Display local active version: gitea_branch_url if cloned, otherwise git_url from applications
                     let activeVersionUrl = data.gitea_branch_url || (app ? app.git_url : null);
-                    if (activeVersionUrl) {
-                        const versionName = activeVersionUrl;
-                        activeVersionSpan.textContent = versionName;
-                    } else {
-                        activeVersionSpan.textContent = 'Not cloned yet';
+                    if (activeVersionSpan) {
+                        if (activeVersionUrl) {
+                            const versionName = activeVersionUrl;
+                            activeVersionSpan.textContent = versionName;
+                        } else {
+                            activeVersionSpan.textContent = 'Not cloned yet';
+                        }
                     }
                     
                     if (app && app.git_url) {
@@ -2419,7 +2663,7 @@ function cloneFromSelectedBranch(appName, repoSize) {
 function checkAllApplicationStatus() {
     const appCards = document.querySelectorAll('.app-card');
     appCards.forEach(card => {
-        const appName = card.querySelector('h3').textContent.split(' ')[0];
+        const appName = card.querySelector('.app-card-name').textContent.split(' ')[0];
         checkApplicationStatus(appName);
     });
 }
@@ -2464,7 +2708,7 @@ function updateApplicationButtonStatus(appName, logs) {
     let appCard = null;
     
     for (const card of appCards) {
-        const cardTitle = card.querySelector('h3').textContent.split(' ')[0];
+        const cardTitle = card.querySelector('.app-card-name').textContent.split(' ')[0];
         if (cardTitle.includes(appName)) {
             appCard = card;
             break;
@@ -2525,7 +2769,15 @@ function updateApplicationButtonStatus(appName, logs) {
     // Remove or add application from list based on status
     if (applicationStatus === 'is_not_cloned') {
         // Keep app card visible in main panel but hide from virtual agent dropdown
-        appCard.style.display = 'block';
+        appCard.style.display = '';
+        appCard.style.backgroundColor = '#e9ecef';
+        
+        // Reset action buttons background
+        const actionButtonsDiv = appCard.querySelector('.app-action-buttons');
+        if (actionButtonsDiv) {
+            actionButtonsDiv.style.backgroundColor = '';
+            actionButtonsDiv.style.padding = '';
+        }
         
         // Remove from virtual agent dropdown only
         const virtualAgentOption = document.getElementById(`virtualAgent-${appName.replace(/\s+/g, '-').toLowerCase()}`);
@@ -2571,7 +2823,7 @@ function updateApplicationButtonStatus(appName, logs) {
 
     } else {
         // Show the app card for cloned applications
-        appCard.style.display = 'block';
+        appCard.style.display = '';
         
         // Show in virtual agent dropdown
         const virtualAgentOption = document.getElementById(`virtualAgent-${appName.replace(/\s+/g, '-').toLowerCase()}`);
@@ -2597,6 +2849,12 @@ function updateApplicationButtonStatus(appName, logs) {
         
         if (isRunning) {
             // Application is running
+            appCard.style.backgroundColor = '#d4edda'; // Soft_Green highlight for running apps
+            const actionButtonsDiv = appCard.querySelector('.app-action-buttons');
+            if (actionButtonsDiv) {
+                actionButtonsDiv.style.backgroundColor = '';
+                actionButtonsDiv.style.padding = '';
+            }
             if (openBtn) {
                 openBtn.classList.remove('btn-primary', 'btn-danger');
                 openBtn.classList.add('btn-success');
@@ -2622,6 +2880,13 @@ function updateApplicationButtonStatus(appName, logs) {
 
         } else if (isNotRunning) {
             // Application is cloned but not running
+            appCard.style.backgroundColor = '#f8d7da';
+            const actionButtonsDiv = appCard.querySelector('.app-action-buttons');
+            if (actionButtonsDiv) {
+                actionButtonsDiv.style.backgroundColor = '';
+                actionButtonsDiv.style.borderRadius = '';
+                actionButtonsDiv.style.padding = '';
+            }
             if (openBtn) {
                 openBtn.classList.remove('btn-primary', 'btn-success', 'btn-secondary');
                 openBtn.classList.add('btn-danger');
@@ -2655,6 +2920,12 @@ function updateApplicationButtonStatus(appName, logs) {
 
         } else if (isClonedButNotCompliant) {
             // Application is cloned but deployApp.sh is missing (not compliant)
+            appCard.style.backgroundColor = '';
+            const actionButtonsDiv = appCard.querySelector('.app-action-buttons');
+            if (actionButtonsDiv) {
+                actionButtonsDiv.style.backgroundColor = '';
+                actionButtonsDiv.style.padding = '';
+            }
             if (openBtn) {
                 openBtn.classList.remove('btn-primary', 'btn-success', 'btn-danger');
                 openBtn.classList.add('btn-warning');
@@ -3238,7 +3509,7 @@ function checkApplicationStatusForActions(appName) {
     let applicationStatus = 'is_not_cloned';
     
     for (const card of appCards) {
-        const cardTitle = card.querySelector('h3').textContent.split(' ')[0];
+        const cardTitle = card.querySelector('.app-card-name').textContent.split(' ')[0];
         if (cardTitle.includes(appName)) {
             const statusField = card.querySelector('.application_status');
             if (statusField) {
@@ -3527,6 +3798,7 @@ function loadBillingSummary() {
             
             html += `</tbody><tfoot><tr><th colspan="3">Total</th><th>$${totalCost.toFixed(4)}</th></tr></tfoot></table>`;
             content.innerHTML = html;
+            makeSortable(content.querySelector('table'));
         })
         .catch(error => {
             document.getElementById('billingSummaryContent').innerHTML = '<p>Error loading billing summary.</p>';
@@ -3572,6 +3844,7 @@ function loadBillingActivities() {
             
             html += '</tbody></table>';
             content.innerHTML = html;
+            makeSortable(content.querySelector('table'));
         })
         .catch(error => {
             document.getElementById('billingActivitiesContent').innerHTML = '<p>Error loading billing activities.</p>';
@@ -3671,6 +3944,7 @@ function loadInvoices() {
             
             html += '</tbody></table>';
             content.innerHTML = html;
+            makeSortable(content.querySelector('table'));
         })
         .catch(error => {
             document.getElementById('invoicesContent').innerHTML = '<p>Error loading invoices.</p>';
@@ -3827,6 +4101,10 @@ function displayTableData(tableName, columns, rows) {
     }
     
     document.getElementById('tableDataContainer').innerHTML = html;
+    
+    // Attach click-to-sort behavior to the rendered table (no-ops on the "No data found" branch)
+    const tableEl = document.getElementById('tableDataContainer').querySelector('table');
+    makeSortable(tableEl);
     
     // Store current table data for editing
     window.currentTableData = { tableName, columns, rows };
@@ -4021,12 +4299,14 @@ function loadServers() {
                         <button onclick="syncServer(${server.id})" class="btn-small btn-info" ${syncDisabled}>Synchronization</button>
                         <button onclick="promoteServer(${server.id})" class="btn-small btn-primary" ${promoteDisabled}>Promote PRIMARY</button>
                         <button onclick="promoteSecondaryServer(${server.id})" class="btn-small btn-secondary" ${promoteSecondaryDisabled}>Promote SECONDARY</button>
+                        <button onclick="window.location.href='/servers/${server.id}/gpu'" class="btn-small btn-warning">Shared-GPU</button>
                         <button onclick="deleteServer(${server.id})" class="btn-small btn-danger" ${deleteDisabled}>Delete</button>
                     </td>
                 </tr>`;
             });
             html += '</tbody></table>';
             grid.innerHTML = html;
+            makeSortable(grid.querySelector('table.servers-table'));
         })
         .catch(error => {
             document.getElementById('serversGrid').innerHTML = '<p>Error loading servers.</p>';
@@ -4428,12 +4708,9 @@ function setButtonLoadingState(appName, action, isLoading, repoSize, startDurati
         button.title = 'Please wait, action in progress...';
         
         // Show loading message for actions that don't show modal immediately
-        if (action === 'clone' || action === 'start' || action === 'stop' || action === 'restart' || action === 'ps') {
+        if (action === 'clone' || action === 'start' || action === 'stop' || action === 'restart' || action === 'ps' || action === 'logs') {
             console.log('Calling showLoadingMessage for action:', action);
             showLoadingMessage(action, appName, repoSize, startDuration, stopDuration);
-        } else if (action === 'logs') {
-            // For logs, show a brief loading indicator without overlay
-            showBriefLoadingIndicator(action, appName);
         }
     } else {
         // Restore original state
@@ -4446,8 +4723,8 @@ function setButtonLoadingState(appName, action, isLoading, repoSize, startDurati
         button.style.cursor = 'pointer';
         button.title = '';
         
-        // Hide loading message (keep open for clone and start actions)
-        if (action !== 'clone' && action !== 'start' && action !== 'ps') {
+        // Hide loading message (keep open for clone, start, ps and logs actions)
+        if (action !== 'clone' && action !== 'start' && action !== 'ps' && action !== 'logs') {
             hideLoadingMessage();
         }
         hideBriefLoadingIndicator();
@@ -4551,7 +4828,7 @@ function showResultInWaitingBox(results) {
     
     // Update the loading content while maintaining size
     loadingContent.innerHTML = `
-        <h3 style="margin: 0 0 1rem 0; color: #2c3e50; font-size: 1.1rem; word-wrap: break-word;">✅ Clone Completed</h3>
+        <h3 style="margin: 0 0 1rem 0; color: #2c3e50; font-size: 1.1rem; word-wrap: break-word;">✅ Operation Completed</h3>
         <div class="results-container" style="background: #f8f9fa; padding: 0.6rem; border-radius: 6px; margin: 0.6rem 0; text-align: left; word-wrap: break-word; min-height: ${Math.max(200, currentHeight - 100)}px; max-height: 300px; overflow-y: auto;">
             <div style="margin: 0; font-size: 0.7rem; color: #34495e; line-height: 1.2; word-wrap: break-word; white-space: pre-wrap;">${results}</div>
         </div>
@@ -4740,6 +5017,28 @@ function showLoadingMessage(action, appName, repoSize, startDuration, stopDurati
                 <div class="loading-tips" style="background: #e8f4fd; padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: left;">
                     <p style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #34495e; line-height: 1.4;">💡 <strong>Tip:</strong> Status check shows current container state</p>
                     <p style="margin: 0; font-size: 0.85rem; color: #34495e; line-height: 1.4;">📋 This will show if containers are running, stopped, or have issues</p>
+                </div>
+                <div class="loading-actions" style="margin-top: 1.5rem; text-align: center;">
+                    <button onclick="hideLoadingMessage()" class="btn btn-secondary" style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">Close</button>
+                </div>
+            </div>
+        `;
+        
+    } else if (action === 'logs') {
+        // Logs loading with centered overlay
+        loadingDiv.innerHTML = `
+            <div class="loading-spinner" style="width: 40px; height: 40px; border: 4px solid rgba(255, 255, 255, 0.3); border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem auto;"></div>
+            <div class="loading-content" style="width: 100%;">
+                <h3 style="margin: 0 0 1.5rem 0; color: #2c3e50; font-size: 1.4rem;">📋 Loading Logs - ${appName}</h3>
+                <div class="progress-container" style="margin: 1.5rem 0;">
+                    <div class="progress-bar" style="width: 100%; height: 8px; background: #ecf0f1; border-radius: 4px; overflow: hidden; margin-bottom: 0.5rem;">
+                        <div class="progress-fill" id="logsProgress" style="height: 100%; background: linear-gradient(90deg, #3498db, #2ecc71); width: 0%; transition: width 0.3s ease; border-radius: 4px;"></div>
+                    </div>
+                    <div class="progress-text" id="progressText" style="font-size: 0.9rem; color: #7f8c8d; margin-bottom: 1rem;">Fetching application logs...</div>
+                </div>
+                <div class="loading-tips" style="background: #e8f4fd; padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: left;">
+                    <p style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #34495e; line-height: 1.4;">💡 <strong>Tip:</strong> Logs show recent container output</p>
+                    <p style="margin: 0; font-size: 0.85rem; color: #34495e; line-height: 1.4;">📋 This will display the latest application logs from Docker</p>
                 </div>
                 <div class="loading-actions" style="margin-top: 1.5rem; text-align: center;">
                     <button onclick="hideLoadingMessage()" class="btn btn-secondary" style="padding: 0.5rem 1rem; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">Close</button>
@@ -5213,10 +5512,13 @@ document.addEventListener('DOMContentLoaded', function() {
         newServiceForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
+            const deploymentMode = document.querySelector('input[name="deploymentMode"]:checked').value;
+            
             const formData = {
                 name: document.getElementById('serviceName').value,
                 image: document.getElementById('serviceImage').value,
-                desired_replicas: parseInt(document.getElementById('serviceReplicas').value) || 1
+                desired_replicas: parseInt(document.getElementById('serviceReplicas').value) || 1,
+                deployment_mode: deploymentMode
             };
             
             // Parse JSON fields
@@ -5267,7 +5569,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show loading indicator
             showServiceCreationLoading();
             
-            fetch('/api/orchestrator/services', {
+            // Choose endpoint based on deployment mode
+            const endpoint = deploymentMode === 'multi_user_local' 
+                ? '/api/orchestrator/services/multi-user-deploy' 
+                : '/api/orchestrator/services';
+            
+            fetch(endpoint, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(formData)
@@ -5278,6 +5585,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.error) {
                     alert(data.error);
                 } else {
+                    // Show success details for multi-user mode
+                    if (deploymentMode === 'multi_user_local' && data.created_users) {
+                        let msg = `Service ${formData.name} deployed successfully!\n\n`;
+                        msg += `Created ${data.created_users.length} replica user(s):\n`;
+                        data.created_users.forEach(u => {
+                            msg += `  • ${u.username} (status: ${u.status})\n`;
+                        });
+                        alert(msg);
+                    }
                     hideCreateServiceForm();
                     loadServices();
                     loadOrchestratorStatus();
@@ -5285,11 +5601,30 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 hideServiceCreationLoading();
-                alert('Error creating service.');
+                alert('Error creating service: ' + error.message);
             });
         });
     }
 });
+
+// Deployment mode switch visual feedback
+function onDeploymentModeChange() {
+    const mode = document.querySelector('input[name="deploymentMode"]:checked').value;
+    const label1 = document.getElementById('deployModeLabel1');
+    const label2 = document.getElementById('deployModeLabel2');
+    
+    if (mode === 'multi_server') {
+        label1.style.borderColor = '#3498db';
+        label1.style.background = '#eaf4fd';
+        label2.style.borderColor = '#dee2e6';
+        label2.style.background = '#f8f9fa';
+    } else {
+        label1.style.borderColor = '#dee2e6';
+        label1.style.background = '#f8f9fa';
+        label2.style.borderColor = '#27ae60';
+        label2.style.background = '#eafaf1';
+    }
+}
 </script>
 
 <script>
@@ -5334,6 +5669,50 @@ function hideServiceCreationLoading() {
     if (overlay) {
         overlay.remove();
     }
+}
+
+// Runtime type management
+function loadRuntimeType() {
+    fetch('/api/configuration')
+        .then(response => response.json())
+        .then(data => {
+            const rtConfig = data.find(c => c.key === 'runtime_type' && !c.parent);
+            if (rtConfig) {
+                document.getElementById('runtimeTypeSelect').value = rtConfig.value;
+            }
+        })
+        .catch(error => console.error('Error loading runtime type:', error));
+}
+
+function saveRuntimeType() {
+    const newValue = document.getElementById('runtimeTypeSelect').value;
+    
+    fetch('/api/configuration')
+        .then(response => response.json())
+        .then(data => {
+            const rtConfig = data.find(c => c.key === 'runtime_type' && !c.parent);
+            if (rtConfig) {
+                return fetch(`/api/configuration/${rtConfig.param_id}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({parent: null, key: 'runtime_type', value: newValue})
+                });
+            } else {
+                return fetch('/api/configuration', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({parent: null, key: 'runtime_type', value: newValue})
+                });
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const status = document.getElementById('runtimeTypeSaveStatus');
+            status.style.display = 'inline';
+            setTimeout(() => { status.style.display = 'none'; }, 3000);
+            loadConfigTable();
+        })
+        .catch(error => alert('Error saving runtime type: ' + error));
 }
 
 // Configuration management functions
@@ -5515,11 +5894,30 @@ function loadDeploymentsFilters() {
                 appSelect.appendChild(option);
             });
         });
+
+    // Populate status filter from actual deployment statuses
+    fetch('/api/deployments/all')
+        .then(response => response.json())
+        .then(deployments => {
+            const statusSelect = document.getElementById('filterStatus');
+            if (!statusSelect) return;
+            const currentValue = statusSelect.value;
+            const statuses = [...new Set(deployments.map(d => d.status).filter(Boolean).map(s => s.toUpperCase()))].sort();
+            statusSelect.innerHTML = '<option value="">All Statuses</option>';
+            statuses.forEach(status => {
+                const option = document.createElement('option');
+                option.value = status;
+                option.textContent = status.charAt(0) + status.slice(1).toLowerCase();
+                statusSelect.appendChild(option);
+            });
+            if (currentValue) statusSelect.value = currentValue;
+        });
 }
 
 function loadDeploymentsTable() {
     const userIdElement = document.getElementById('filterUserId');
     const appIdElement = document.getElementById('filterApplicationId');
+    const statusElement = document.getElementById('filterStatus');
     
     if (!userIdElement || !appIdElement) {
         return;
@@ -5527,6 +5925,7 @@ function loadDeploymentsTable() {
     
     const userId = userIdElement.value;
     const appId = appIdElement.value;
+    const statusFilter = statusElement ? statusElement.value : '';
     
     fetch('/api/deployments/all')
         .then(response => response.json())
@@ -5538,6 +5937,9 @@ function loadDeploymentsTable() {
             }
             if (appId) {
                 filtered = filtered.filter(d => d.application_id == appId);
+            }
+            if (statusFilter) {
+                filtered = filtered.filter(d => d.status && d.status.toUpperCase() === statusFilter);
             }
             
             const container = document.getElementById('deploymentsTableContainer');
@@ -5611,6 +6013,9 @@ function loadDeploymentsTable() {
             
             html += '</tbody></table>';
             container.innerHTML = html;
+            // Attach click-to-sort behavior; exclude the two <select> listbox columns
+            // (9 = Modification History, 10 = Backups History). Trailing Actions (11) auto-excluded.
+            makeSortable(container.querySelector('table'), { excludeColumns: [9, 10] });
         })
         .catch(error => {
             document.getElementById('deploymentsTableContainer').innerHTML = '<p>Error loading deployments.</p>';
@@ -5765,6 +6170,7 @@ function loadAppManagement() {
             
             html += '</tbody></table>';
             grid.innerHTML = html;
+            makeSortable(grid.querySelector('table'));
         })
         .catch(error => {
             document.getElementById('appManagementGrid').innerHTML = '<p>Error loading applications.</p>';
@@ -5830,7 +6236,17 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             const appId = document.getElementById('editAppMgmtId').value;
+            const newId = parseInt(document.getElementById('editAppMgmtNewId').value);
+            
+            // Client-side uniqueness check for the new ID
+            if (newId !== parseInt(appId) && window._existingAppIds && window._existingAppIds.includes(newId)) {
+                document.getElementById('editAppMgmtIdError').style.display = 'block';
+                return;
+            }
+            document.getElementById('editAppMgmtIdError').style.display = 'none';
+            
             const appData = {
+                new_id: newId,
                 name: document.getElementById('editAppMgmtName').value,
                 url: document.getElementById('editAppMgmtUrl').value,
                 description: document.getElementById('editAppMgmtDescription').value,
@@ -5862,6 +6278,20 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // Real-time validation for Application ID uniqueness
+    const editAppMgmtNewIdInput = document.getElementById('editAppMgmtNewId');
+    if (editAppMgmtNewIdInput) {
+        editAppMgmtNewIdInput.addEventListener('input', function() {
+            const newId = parseInt(this.value);
+            const errorEl = document.getElementById('editAppMgmtIdError');
+            if (window._existingAppIds && window._existingAppIds.includes(newId)) {
+                errorEl.style.display = 'block';
+            } else {
+                errorEl.style.display = 'none';
+            }
+        });
+    }
 });
 
 function editAppManagement(appId) {
@@ -5874,8 +6304,11 @@ function editAppManagement(appId) {
                 return;
             }
             
+            // Store all existing IDs except the current one for uniqueness validation
+            window._existingAppIds = apps.filter(a => a.id !== appId).map(a => a.id);
+            
             document.getElementById('editAppMgmtId').value = app.id;
-            document.getElementById('editAppMgmtIdentity').textContent = app.id;
+            document.getElementById('editAppMgmtNewId').value = app.id;
             document.getElementById('editAppMgmtName').value = app.name;
             document.getElementById('editAppMgmtUrl').value = app.url;
             document.getElementById('editAppMgmtSwautomorphUrl').value = app.swautomorph_url || 'Not yet deployed';
@@ -5886,6 +6319,9 @@ function editAppManagement(appId) {
             document.getElementById('editAppMgmtDockerStartDuration').value = app.docker_start_duration || '';
             document.getElementById('editAppMgmtDockerStopDuration').value = app.docker_stop_duration || '';
             document.getElementById('editAppMgmtDockerPsDuration').value = app.docker_ps_duration || '';
+            
+            // Clear any previous ID error
+            document.getElementById('editAppMgmtIdError').style.display = 'none';
             
             showEditAppManagementForm();
         })

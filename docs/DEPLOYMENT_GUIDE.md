@@ -109,9 +109,10 @@ The platform automatically selects the optimal server based on:
      [PORTS]
      RANGE_START = 6000
      RANGE_RESERVED = 100
-     RANGE_PORTS_PER_APPLICATION = 5
+     RANGE_PORTS_PER_APPLICATION = 12
      ```
    - Port calculation: `HTTP_PORT = RANGE_START + user_id * RANGE_RESERVED + app_id * RANGE_PORTS_PER_APPLICATION`
+   - Each application is allocated 12 consecutive ports (6 HTTP + 6 HTTPS)
    - SSL certificate validation and HTTPS configuration
 
 3. **Stop Application**:
@@ -277,16 +278,28 @@ Application port allocation is configured in `conf/deploy.ini`:
 [PORTS]
 RANGE_START = 6000
 RANGE_RESERVED = 100
-RANGE_PORTS_PER_APPLICATION = 5
+RANGE_PORTS_PER_APPLICATION = 12
 ```
 
 **Port Allocation Formula:**
+
+Each application is allocated 12 consecutive ports (6 HTTP + 6 HTTPS),
+laid out as alternating HTTP/HTTPS pairs:
+
 ```python
 PORT_RANGE_BEGIN = RANGE_START + user_id * RANGE_RESERVED
-HTTP_PORT = PORT_RANGE_BEGIN + app_id * RANGE_PORTS_PER_APPLICATION
-HTTPS_PORT = HTTP_PORT + 1
-HTTP_PORT2 = HTTPS_PORT + 1
+HTTP_PORT  = PORT_RANGE_BEGIN + app_id * RANGE_PORTS_PER_APPLICATION
+HTTPS_PORT  = HTTP_PORT + 1
+HTTP_PORT2  = HTTPS_PORT + 1
 HTTPS_PORT2 = HTTP_PORT2 + 1
+HTTP_PORT3  = HTTPS_PORT2 + 1
+HTTPS_PORT3 = HTTP_PORT3 + 1
+HTTP_PORT4  = HTTPS_PORT3 + 1
+HTTPS_PORT4 = HTTP_PORT4 + 1
+HTTP_PORT5  = HTTPS_PORT4 + 1
+HTTPS_PORT5 = HTTP_PORT5 + 1
+HTTP_PORT6  = HTTPS_PORT5 + 1
+HTTPS_PORT6 = HTTP_PORT6 + 1
 ```
 
 **Example Calculation:**
@@ -294,18 +307,22 @@ HTTPS_PORT2 = HTTP_PORT2 + 1
 - App ID: 3
 - RANGE_START: 6000
 - RANGE_RESERVED: 100
-- RANGE_PORTS_PER_APPLICATION: 5
+- RANGE_PORTS_PER_APPLICATION: 12
 
 Result:
 - PORT_RANGE_BEGIN = 6000 + (2 × 100) = 6200
-- HTTP_PORT = 6200 + (3 × 5) = 6215
-- HTTPS_PORT = 6216
-- HTTP_PORT2 = 6217
-- HTTPS_PORT2 = 6218
+- HTTP_PORT = 6200 + (3 × 12) = 6236
+- HTTPS_PORT = 6237
+- HTTP_PORT2 = 6238, HTTPS_PORT2 = 6239
+- HTTP_PORT3 = 6240, HTTPS_PORT3 = 6241
+- HTTP_PORT4 = 6242, HTTPS_PORT4 = 6243
+- HTTP_PORT5 = 6244, HTTPS_PORT5 = 6245
+- HTTP_PORT6 = 6246, HTTPS_PORT6 = 6247
 
 **Configuration Notes:**
 - Each user gets a reserved range of ports (default: 100 ports)
-- Each application within that range gets multiple ports (default: 5 ports)
+- Each application within that range gets 12 ports (6 HTTP + 6 HTTPS)
+- With 12 ports per application, a 100-port user range fits up to 8 applications
 - Modify `conf/deploy.ini` to adjust port ranges for your environment
 - Ensure firewall rules allow traffic on allocated port ranges
 

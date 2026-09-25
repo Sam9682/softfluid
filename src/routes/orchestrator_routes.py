@@ -4,6 +4,7 @@ from ..database_postgres import db_manager
 import json
 import subprocess
 import os
+import socket
 import logging
 from .. import config_postgres
 
@@ -219,7 +220,7 @@ def create_service():
         
         # Deploy application using deployApp.sh
         try:
-            app_dir = f'/home/ubuntu/deployments/{username}/{name.lower().replace(" ", "-")}'
+            app_dir = f'/home/{config_postgres.LINUX_USER_INSTALLATION}/deployments/{username}/{name.lower().replace(" ", "-")}'
             deploy_script = f'{app_dir}/deployApp.sh'
             
             logger.info(f"App directory: {app_dir}")
@@ -230,7 +231,7 @@ def create_service():
                 'ssh',
                 '-o', 'StrictHostKeyChecking=no',
                 '-o', 'UserKnownHostsFile=/dev/null',
-                f'ubuntu@{server_ip}',
+                f'{config_postgres.LINUX_USER_INSTALLATION}@{server_ip}',
                 f'cd {app_dir} && {deploy_script} start {user_id} {username}'
             ]
             
@@ -494,4 +495,271 @@ def orchestrator_status():
         })
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@orchestrator_bp.route('/services/multi-user-deploy', methods=['POST'])
+def multi_user_deploy():
+    """Deploy a service by creating multiple user environments on the current server.
+    
+    Steps:
+    1. Create N replica users named '{APP_NAME}{i}' for i in 1..replicas
+    2. Assign the application to each replica user (user_applications)
+    3. Clone the application into each user's deployment folder
+    4. Start the Docker container in each user's environment
+    """
+    if not require_admin():
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        data = request.get_json()
+        app_name = data.get('name')
+        git_url = data.get('image')  # 'image' field holds the git_url in this form
+        desired_replicas = data.get('desired_replicas', 1)
+        environment = data.get('environment', {})
+        health_check_path = data.get('health_check_path', '/health')
+        
+        if not app_name:
+            return jsonify({'error': 'Application name is required'}), 400
+        if not git_url:
+            return jsonify({'error': 'Git URL is required'}), 400
+        if desired_replicas < 1 or desired_replicas > 10:
+            return jsonify({'error': 'Replicas must be between 1 and 10'}), 400
+        
+        logger.info(f"[MULTI-USER DEPLOY] Starting multi-user deployment for '{app_name}' with {desired_replicas} replicas")
+        
+        # Get application info
+        app_result = db_manager.execute_query(
+            'SELECT id, name FROM applications WHERE name = %s',
+            (app_name,), fetch_one=True
+        )
+        if not app_result:
+            return jsonify({'error': f'Application "{app_name}" not found'}), 404
+        
+        application_id = app_result[0]
+        
+        # Get the current server (first available or local)
+        server_result = db_manager.execute_query('''
+            SELECT id, server_ip FROM servers 
+            WHERE server_status IN ('STAND_BY', 'ACTIVE')
+            ORDER BY id ASC LIMIT 1
+        ''', fetch_one=True)
+        
+        if not server_result:
+            return jsonify({'error': 'No available server found'}), 500
+        
+        server_id = server_result[0]
+        server_ip = server_result[1]
+        
+        DOMAIN = config_postgres.DOMAIN
+        from ..database_postgres import calculate_app_ports, APP_PORT_COLUMNS_SQL, APP_PORT_PLACEHOLDERS_SQL
+        from werkzeug.security import generate_password_hash
+        
+        created_users = []
+        
+        # Sanitize app name for username generation (lowercase, no spaces)
+        app_name_sanitized = app_name.lower().replace(' ', '-').replace('_', '-')
+        
+        for i in range(1, desired_replicas + 1):
+            replica_username = f"{app_name_sanitized}{i}"
+            replica_email = f"{replica_username}@{DOMAIN}"
+            
+            logger.info(f"[MULTI-USER DEPLOY] Processing replica user '{replica_username}' ({i}/{desired_replicas})")
+            
+            user_status = 'created'
+            
+            try:
+                # Step 1: Create the replica user (if not exists)
+                existing_user = db_manager.execute_query(
+                    'SELECT id FROM users WHERE username = %s',
+                    (replica_username,), fetch_one=True
+                )
+                
+                if existing_user:
+                    replica_user_id = existing_user[0]
+                    logger.info(f"[MULTI-USER DEPLOY] User '{replica_username}' already exists (id={replica_user_id})")
+                    user_status = 'existing'
+                else:
+                    # Create user with a generated password (not meant for login, just for system use)
+                    password_hash = generate_password_hash(f"replica_{replica_username}_auto")
+                    replica_user_id = db_manager.execute_query(
+                        '''INSERT INTO users (username, email, password_hash, first_name, last_name, suspended)
+                           VALUES (%s, %s, %s, %s, %s, %s) RETURNING id''',
+                        (replica_username, replica_email, password_hash, app_name, f'Replica {i}', False),
+                        fetch_one=True
+                    )
+                    if replica_user_id:
+                        replica_user_id = replica_user_id[0]
+                    else:
+                        logger.error(f"[MULTI-USER DEPLOY] Failed to create user '{replica_username}'")
+                        created_users.append({'username': replica_username, 'status': 'failed_create'})
+                        continue
+                    
+                    logger.info(f"[MULTI-USER DEPLOY] Created user '{replica_username}' (id={replica_user_id})")
+                
+                # Step 2: Assign application to the replica user (user_applications)
+                existing_assignment = db_manager.execute_query(
+                    'SELECT id FROM user_applications WHERE user_id = %s AND application_id = %s',
+                    (replica_user_id, application_id), fetch_one=True
+                )
+                
+                if not existing_assignment:
+                    app_ports = calculate_app_ports(replica_user_id, application_id)
+                    url = f"https://www.{DOMAIN}/{replica_username}/{app_name}"
+                    
+                    db_manager.execute_query(
+                        f'''INSERT INTO user_applications (user_id, application_id, url, {APP_PORT_COLUMNS_SQL})
+                           VALUES (%s, %s, %s, {APP_PORT_PLACEHOLDERS_SQL})
+                           ON CONFLICT (user_id, application_id) DO NOTHING''',
+                        (replica_user_id, application_id, url, *app_ports)
+                    )
+                    logger.info(f"[MULTI-USER DEPLOY] Assigned app '{app_name}' to user '{replica_username}'")
+                else:
+                    logger.info(f"[MULTI-USER DEPLOY] App '{app_name}' already assigned to user '{replica_username}'")
+                
+                # Step 3: Clone the application into the user's deployment folder
+                deployment_path = f'/home/{config_postgres.LINUX_USER_INSTALLATION}/deployments/{replica_username}/{app_name.lower().replace(" ", "-")}'
+                
+                # Determine if local or remote
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.connect(("8.8.8.8", 80))
+                    current_server_ip = s.getsockname()[0]
+                    s.close()
+                except (OSError, socket.error):
+                    current_server_ip = "127.0.0.1"
+                
+                is_local = (str(server_ip) == current_server_ip or str(server_ip) in ["127.0.0.1", "localhost"])
+                
+                git_env = os.environ.copy()
+                git_env.update({'GIT_CONFIG_NOSYSTEM': '1', 'HOME': f'/home/{config_postgres.LINUX_USER_INSTALLATION}', 'USER': config_postgres.LINUX_USER_INSTALLATION})
+                
+                if is_local:
+                    # Local clone
+                    if not os.path.exists(deployment_path):
+                        os.makedirs(deployment_path, exist_ok=True)
+                        clone_result = subprocess.run(
+                            ['git', 'clone', '--recurse-submodules', git_url, deployment_path],
+                            capture_output=True, text=True, timeout=300, env=git_env
+                        )
+                    else:
+                        # Already exists, do a pull/fetch
+                        clone_result = subprocess.run(
+                            ['git', '-C', deployment_path, 'pull', '--recurse-submodules'],
+                            capture_output=True, text=True, timeout=300, env=git_env
+                        )
+                else:
+                    # Remote clone via SSH
+                    ssh_cmd = f"ssh -o StrictHostKeyChecking=no {config_postgres.LINUX_USER_INSTALLATION}@{server_ip} 'mkdir -p {deployment_path} && if [ -d {deployment_path}/.git ]; then cd {deployment_path} && git pull --recurse-submodules; else git clone --recurse-submodules {git_url} {deployment_path}; fi'"
+                    clone_result = subprocess.run(
+                        ssh_cmd, shell=True, capture_output=True, text=True, timeout=300
+                    )
+                
+                if clone_result.returncode != 0:
+                    logger.error(f"[MULTI-USER DEPLOY] Clone failed for '{replica_username}': {clone_result.stderr}")
+                    created_users.append({'username': replica_username, 'status': 'clone_failed'})
+                    continue
+                
+                logger.info(f"[MULTI-USER DEPLOY] Cloned app to {deployment_path}")
+                
+                # Record deployment in deployments table
+                swautomorph_url = f"https://{DOMAIN}/{replica_username}/{app_name}"
+                existing_deployment = db_manager.execute_query(
+                    'SELECT id FROM deployments WHERE user_id = %s AND application_name = %s AND server_id = %s',
+                    (replica_user_id, app_name, server_id), fetch_one=True
+                )
+                
+                if existing_deployment:
+                    db_manager.execute_query(
+                        '''UPDATE deployments SET status = %s, deployment_path = %s, git_url = %s, 
+                           gitea_branch_url = %s, swautomorph_url = %s, application_id = %s, 
+                           updated_at = CURRENT_TIMESTAMP 
+                           WHERE user_id = %s AND application_name = %s AND server_id = %s''',
+                        ('cloned', deployment_path, git_url, git_url, swautomorph_url, application_id,
+                         replica_user_id, app_name, server_id)
+                    )
+                else:
+                    db_manager.execute_query(
+                        '''INSERT INTO deployments (user_id, application_id, application_name, status, deployment_path, git_url, gitea_branch_url, server_id, swautomorph_url)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)''',
+                        (replica_user_id, application_id, app_name, 'cloned', deployment_path, git_url, git_url, server_id, swautomorph_url)
+                    )
+                
+                # Step 4: Start the Docker container in the user's environment
+                deploy_script = os.path.join(deployment_path, 'deployApp.sh')
+                
+                if is_local:
+                    if os.path.exists(deploy_script):
+                        start_result = subprocess.run(
+                            [deploy_script, 'start', str(replica_user_id), replica_username],
+                            cwd=deployment_path, capture_output=True, text=True, timeout=300
+                        )
+                    else:
+                        logger.warning(f"[MULTI-USER DEPLOY] deployApp.sh not found at {deploy_script}")
+                        start_result = type('Result', (), {'returncode': 1, 'stderr': 'deployApp.sh not found'})()
+                else:
+                    ssh_start_cmd = [
+                        'ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'UserKnownHostsFile=/dev/null',
+                        f'{config_postgres.LINUX_USER_INSTALLATION}@{server_ip}',
+                        f'cd {deployment_path} && ./deployApp.sh start {replica_user_id} {replica_username}'
+                    ]
+                    start_result = subprocess.run(
+                        ssh_start_cmd, capture_output=True, text=True, timeout=300
+                    )
+                
+                if start_result.returncode != 0:
+                    logger.warning(f"[MULTI-USER DEPLOY] Start failed for '{replica_username}': {getattr(start_result, 'stderr', 'unknown error')}")
+                    user_status = 'cloned_but_start_failed' if user_status != 'existing' else 'existing_start_failed'
+                else:
+                    logger.info(f"[MULTI-USER DEPLOY] Docker started for '{replica_username}'")
+                    user_status = 'deployed' if user_status != 'existing' else 'existing_redeployed'
+                    
+                    # Update deployment status
+                    db_manager.execute_query(
+                        'UPDATE deployments SET status = %s, updated_at = CURRENT_TIMESTAMP WHERE user_id = %s AND application_name = %s',
+                        ('running', replica_user_id, app_name)
+                    )
+                
+                created_users.append({'username': replica_username, 'user_id': replica_user_id, 'status': user_status})
+                
+            except Exception as e:
+                logger.error(f"[MULTI-USER DEPLOY] Error processing replica '{replica_username}': {str(e)}")
+                created_users.append({'username': replica_username, 'status': f'error: {str(e)}'})
+                continue
+        
+        # Create the service record in services table for tracking only.
+        # Set desired_replicas=0 so that the orchestrator's reconciliation loop
+        # does NOT try to `docker run` the git_url as an image — multi_user_deploy
+        # already handles cloning and starting containers via deployApp.sh.
+        from ..orchestrator import orchestrator
+        orchestrator.create_service(
+            name=app_name,
+            image=git_url,
+            user_id=session['user_id'],
+            desired_replicas=0,
+            ports=data.get('ports', {}),
+            environment=environment,
+            volumes=data.get('volumes', []),
+            health_check_path=health_check_path
+        )
+        # Now update the service record to reflect the actual desired replicas
+        # without triggering reconciliation (which would try docker run with the git URL)
+        db_manager.execute_query(
+            'UPDATE services SET desired_replicas = %s, updated_at = CURRENT_TIMESTAMP WHERE name = %s AND user_id = %s',
+            (desired_replicas, app_name, session['user_id'])
+        )
+        
+        successful = sum(1 for u in created_users if 'deployed' in u.get('status', '') or 'redeployed' in u.get('status', ''))
+        
+        logger.info(f"[MULTI-USER DEPLOY] Completed: {successful}/{desired_replicas} replicas deployed successfully")
+        
+        return jsonify({
+            'message': f'Multi-user deployment completed for {app_name}',
+            'total_replicas': desired_replicas,
+            'successful_deploys': successful,
+            'created_users': created_users
+        }), 201
+        
+    except Exception as e:
+        logger.error(f"[MULTI-USER DEPLOY] Exception: {str(e)}")
         return jsonify({'error': str(e)}), 500

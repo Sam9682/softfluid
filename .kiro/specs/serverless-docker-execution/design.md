@@ -325,12 +325,12 @@ Requires=postgresql.service
 Type=simple
 User=ubuntu
 Group=ubuntu
-WorkingDirectory=/home/ubuntu/softfluid
+WorkingDirectory=/home/ubuntu/opcp-cloudstore-docker-ai
 ExecStart=/usr/bin/python3 -m src.serverless.worker
 Restart=always
 RestartSec=5
 Environment=WORKER_ID=worker-001
-Environment=PYTHONPATH=/home/ubuntu/softfluid
+Environment=PYTHONPATH=/home/ubuntu/opcp-cloudstore-docker-ai
 
 [Install]
 WantedBy=multi-user.target

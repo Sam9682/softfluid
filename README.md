@@ -1,11 +1,11 @@
-# AI-SwAutoMorph
+# AI-Powered-Store
 
 ## Objective
 
-AI-SwAutoMorph is a centralized application deployment and management platform designed for GenAI agents. It provides automated deployment, lifecycle management, and SSO authentication for web applications through multiple interfaces (Web, CLI, API, MCP).
+AI-Powered-Store is a centralized application deployment and management platform designed for GenAI agents. It provides automated deployment, lifecycle management, and SSO authentication for web applications through multiple interfaces (Web, CLI, API, MCP).
 
 **Core Purpose**: Enable GenAI agents to autonomously deploy, manage, and access web applications without human intervention.
-
+8
 ## Features
 
 - 🔐 User registration and authentication with Gitea integration
@@ -27,6 +27,19 @@ AI-SwAutoMorph is a centralized application deployment and management platform d
 - 📖 Comprehensive user guide and documentation
 - 🔧 **PostgreSQL connection pooling** with thread-safe operations
 - 🔄 **SQLite to PostgreSQL migration tools**
+- 🎮 **MIG Shared GPU**: NVIDIA Multi-Instance GPU partitioning and management per server
+- ⚡ **Serverless Docker Execution**: Submit and run Docker-based jobs on-demand
+- 🛡️ **Container Runtime Isolation**: Support for both standard containers (runc) and MicroVM isolation (Kata Containers)
+- 🔄 **Multi-server Replication**: Peer-to-peer database replication with sync tokens
+- 🎭 **App Orchestrator**: Automated application lifecycle orchestration with reconciliation
+- 🔒 **Password Reset & 2FA**: Secure password recovery and two-factor authentication via email
+- 🧩 **Deploy Templates Catalog**: One-click blueprints (Static Site, FastAPI, n8n, Ollama, Jupyter, Qdrant Vector DB) deployable identically across Dashboard, CLI, MCP, and REST
+- 🧙 **Onboarding Setup Wizard**: Guided first-run configuration that safely writes `conf/deploy.ini` (timestamped backup, atomic write, hashed admin password)
+- 🧪 **Sandbox Demo Account**: Labeled demo user and sandbox deployments for trying the platform without impacting real data
+- 🔢 **Extended Port Allocation**: 12 consecutive ports (6 HTTP + 6 HTTPS) reserved per application
+- ↕️ **Sortable Dashboard Grids**: Client-side column sorting across all dashboard tables
+- 🟢 **Running-App Highlight**: Running applications are visually highlighted in the dashboard
+- 🗂️ **Configurable Install Layout**: Install folder, Linux user, and paths driven by `conf/deploy.ini` (no hardcoded `/ubuntu/`)
 
 ## PostgreSQL Migration
 
@@ -60,9 +73,9 @@ which python3 && which pip && which docker && which docker-compose
 
 ### Interactive Deployment (Recommended)
 ```bash
-# Clone repository
-git clone https://github.com/your-repo/ai-swautomorph.git
-cd ai-swautomorph
+# Clone repository (folder name is configured via PLTF_FOLDER in conf/deploy.ini)
+git clone https://github.com/your-repo/softfluid-explorer.git
+cd softfluid-explorer  # default PLTF_FOLDER value
 
 # Interactive deployment with menu selection
 ./deployControlPlan.sh start
@@ -92,7 +105,7 @@ docker-compose up -d --build
 pip install -r requirements.txt
 
 # 2. Initialize database
-python3 ./scripts/cloudstore_cli.py init-db
+python3 ./scripts/aipoweredstore_cli.py init-db
 
 # 3. Start application
 python3 src/ControlPlanFlaskApp_postgres.py
@@ -122,10 +135,10 @@ MODSECURITY_CONF_DIR="/etc/nginx/modsec"
 ### Database Initialization
 ```bash
 # Initialize database schema
-python3 ./scripts/cloudstore_cli.py init-db
+python3 ./scripts/aipoweredstore_cli.py init-db
 
 # Check database health
-python3 ./scripts/cloudstore_cli.py db-health
+python3 ./scripts/aipoweredstore_cli.py db-health
 ```
 
 ### SSL Certificate Setup
@@ -189,6 +202,97 @@ curl -X POST https://www.swautomorph.com/api/servers \
   -d '{"SERVER_IP":"192.168.1.100","SERVER_NAME":"worker-01","SERVER_CAPACITY_USER_MAX":20,"SERVER_CAPACITY_APPLI_MAX":100,"SERVER_STATUS":"STAND_BY","SERVER_TYPE":"worker"}'
 ```
 
+### MIG Shared GPU Management
+```bash
+# Enable shared GPU on a server (admin required)
+curl -X PUT https://www.swautomorph.com/api/servers/1/gpu/enabled \
+  -H "Content-Type: application/json" \
+  -H "Cookie: session=your-session-cookie" \
+  -d '{"enabled": true}'
+
+# List available MIG profiles from GPU hardware
+curl https://www.swautomorph.com/api/servers/1/gpu/profiles \
+  -H "Cookie: session=your-session-cookie"
+
+# Create MIG instances (1-7 profile IDs)
+curl -X POST https://www.swautomorph.com/api/servers/1/gpu/instances \
+  -H "Content-Type: application/json" \
+  -H "Cookie: session=your-session-cookie" \
+  -d '{"profile_ids": ["9", "14", "9"]}'
+
+# List active MIG instances
+curl https://www.swautomorph.com/api/servers/1/gpu/instances \
+  -H "Cookie: session=your-session-cookie"
+
+# Destroy all MIG instances on a server
+curl -X DELETE https://www.swautomorph.com/api/servers/1/gpu/instances \
+  -H "Cookie: session=your-session-cookie"
+```
+
+### Serverless Docker Execution
+```bash
+# Submit a serverless Docker job
+curl -X POST https://www.swautomorph.com/api/jobs \
+  -H "Content-Type: application/json" \
+  -H "Cookie: session=your-session-cookie" \
+  -d '{"image": "python:3.11", "command": "python -c \"print(hello)\"", "timeout": 60}'
+
+# Check job status
+curl https://www.swautomorph.com/api/jobs/<job_id> \
+  -H "Cookie: session=your-session-cookie"
+
+# List user jobs
+curl https://www.swautomorph.com/api/jobs \
+  -H "Cookie: session=your-session-cookie"
+```
+
+### Deploy Templates (Onboarding Experience)
+
+The platform ships a catalog of ready-to-deploy blueprints. Every surface (Dashboard, CLI, MCP, REST) deploys through the same template service, so behavior is identical everywhere. Deployed apps are exposed at `https://{domain}/{USER_ID}/{APPLICATION_NAME}`.
+
+Built-in templates:
+
+| Template ID       | Type          | Image                                          |
+|-------------------|---------------|------------------------------------------------|
+| `static-site`     | static_site   | nginx:1.27-alpine                              |
+| `fastapi-starter` | fastapi       | tiangolo/uvicorn-gunicorn-fastapi:python3.11   |
+| `n8n`             | n8n           | n8nio/n8n:latest                               |
+| `ollama`          | ollama        | ollama/ollama:latest                           |
+| `jupyter`         | jupyter       | jupyter/base-notebook:latest                   |
+| `vector-db`       | vector_db     | qdrant/qdrant:latest                           |
+
+```bash
+# List available deploy templates
+curl https://www.swautomorph.com/api/templates \
+  -H "Cookie: session=your-session-cookie"
+
+# Deploy an application from a template
+curl -X POST https://www.swautomorph.com/api/templates/fastapi-starter/deploy \
+  -H "Content-Type: application/json" \
+  -H "Cookie: session=your-session-cookie" \
+  -d '{"application_name":"my-api"}'
+```
+
+On any failure after port allocation, partial records are rolled back in a single transaction and the nginx location block is removed, so no partial resources remain.
+
+### Container Runtime Isolation
+
+The platform supports two container runtime types, configurable from the **Settings** page (admin only):
+
+|       Runtime           |                                    Description                                      |                    Use Case                              |
+|-------------------------|-------------------------------------------------------------------------------------|----------------------------------------------------------|
+| **runc** (default)      | Standard OCI container runtime. Containers share the host kernel,                   | General-purpose workloads where speed and                |
+|                         |  providing lightweight and fast execution.                                          |  density are priorities.                                 |
+| **kata**                | Kata Containers runtime. Each container runs inside a dedicated lightweight MicroVM | Security-sensitive workloads, multi-tenant environments, | 
+|                         |  with its own kernel, providing hardware-level isolation.                           |  or when stronger isolation                              |
+
+**Configuration:**
+- Navigate to the **Settings** tab in the admin dashboard
+- Select the desired runtime type (`runc` or `kata`) from the dropdown
+- Click "Save Runtime Type"
+
+The `runtime_type` setting applies to application deployments and serverless Docker job execution across all servers managed by the platform.
+
 ### Dynamic Nginx Locations
 ```bash
 # Access user applications via dynamic URLs
@@ -228,25 +332,25 @@ curl -X POST https://www.swautomorph.com/api/deployments \
 ### Enhanced CLI Interface
 ```bash
 # Register user
-python3 ./scripts/cloudstore_cli.py register --username agent --email agent@example.com --password secure_pass
+python3 ./scripts/aipoweredstore_cli.py register --username agent --email agent@example.com --password secure_pass
 
 # List applications
-python3 ./scripts/cloudstore_cli.py list-apps
+python3 ./scripts/aipoweredstore_cli.py list-apps
 
 # Add application
-python3 ./scripts/cloudstore_cli.py add-app --name MyApp --url https://myapp.com --description "My Application"
+python3 ./scripts/aipoweredstore_cli.py add-app --name MyApp --url https://myapp.com --description "My Application"
 
 # Validate SSO token
-python3 ./scripts/cloudstore_cli.py validate-token --token your-sso-token
+python3 ./scripts/aipoweredstore_cli.py validate-token --token your-sso-token
 
 # Database health check with detailed statistics
-python3 ./scripts/cloudstore_cli.py db-health
+python3 ./scripts/aipoweredstore_cli.py db-health
 
 # Mount S3 storage for backups
-python3 ./scripts/cloudstore_cli.py mount-s3fs softfluid /mnt/s3
+python3 ./scripts/aipoweredstore_cli.py mount-s3fs softfluid /mnt/s3
 
 # Initialize database with thread-safe operations
-python3 ./scripts/cloudstore_cli.py init-db
+python3 ./scripts/aipoweredstore_cli.py init-db
 ```
 
 ### MCP Protocol
@@ -296,7 +400,7 @@ curl https://www.swautomorph.com/api/deployments/1/logs
 ./deployControlPlan.sh --recover_db
 
 # Database health check
-python3 ./scripts/cloudstore_cli.py db-health
+python3 ./scripts/aipoweredstore_cli.py db-health
 ```
 
 ## Default Configuration
@@ -316,7 +420,7 @@ python3 ./scripts/cloudstore_cli.py db-health
 
 ### Directory Structure
 ```
-ai-swautomorph/
+<PLTF_FOLDER>/                    # Folder name from conf/deploy.ini
 ├── src/                    # Main application source
 │   ├── routes/            # Flask route blueprints
 │   │   ├── main_routes.py        # Dashboard & documentation
@@ -324,19 +428,53 @@ ai-swautomorph/
 │   │   ├── sso_routes.py         # Single Sign-On
 │   │   ├── api_routes.py         # REST API with streaming
 │   │   ├── genai_routes.py       # Virtual AI agents
-│   │   └── billing_routes.py     # Billing & cost tracking
+│   │   ├── billing_routes.py     # Billing & cost tracking
+│   │   ├── orchestrator_routes.py # App lifecycle orchestration
+│   │   ├── replication_routes.py # Multi-server replication
+│   │   ├── security_routes.py   # Password reset & 2FA
+│   │   ├── serverless_routes.py  # Serverless Docker execution
+│   │   ├── gpu_routes.py         # MIG shared GPU management
+│   │   ├── templates_routes.py   # Deploy Templates REST API
+│   │   ├── wizard_routes.py      # Onboarding setup wizard API
+│   │   └── sandbox_routes.py     # Sandbox demo provision/reset/teardown
+│   ├── serverless/        # Serverless execution engine
 │   ├── ControlPlanFlaskApp_postgres.py    # Main Flask application
 │   ├── database_postgres.py      # PostgreSQL database manager with connection pooling
 │   ├── database.py               # Legacy SQLite database manager (migration compatibility)
 │   ├── nginx_manager.py          # Dynamic nginx location management
+│   ├── orchestrator.py           # Application orchestration & reconciliation
+│   ├── replication_manager.py    # Peer-to-peer database replication
+│   ├── platform_discovery.py     # Platform capability discovery
+│   ├── template_catalog.py       # Deploy Templates catalog (single source of truth)
+│   ├── template_deploy.py        # Surface-agnostic template deploy service
+│   ├── configuration_writer.py   # Safe writer for conf/deploy.ini (onboarding wizard)
 │   ├── config.py                 # Configuration & multi-language
 │   └── auth.py                   # Authentication utilities
+├── migration/             # Database migration scripts
+│   ├── add_serverless_jobs.sql          # Serverless jobs schema
+│   ├── add_mig_gpu.sql                  # MIG GPU tables & server flag
+│   ├── add_password_reset_and_2fa.sql   # Security features schema
+│   ├── add_deploy_templates.sql         # Deploy templates catalog & sandbox labeling
+│   ├── add_extended_ports_to_user_applications.sql # 12-port allocation per app
+│   └── ...                              # Other migrations
 ├── scripts/               # CLI tools and utilities
-│   ├── cloudstore_cli.py                    # Command-line interface
+│   ├── aipoweredstore_cli.py            # Command-line interface
 │   ├── mcp_server.py             # Model Context Protocol server
 │   ├── sync_nginx_locations.py   # Sync nginx locations from database
-│   └── postgresql_schema.sql          # PostgreSQL schema definition
+│   └── postgresql_schema.sql     # PostgreSQL schema definition
+├── tests/                # Test suite (pytest)
+│   ├── test_gpu_parsers.py              # MIG instance parser tests
+│   ├── test_parse_mig_profiles.py       # MIG profile parser tests
+│   ├── test_validate_profile_ids.py     # Profile ID validation tests
+│   ├── test_gpu_enabled_endpoint.py     # GPU enabled toggle tests
+│   ├── test_gpu_delete_instances.py     # GPU instance destruction tests
+│   ├── test_serverless_routes.py        # Serverless API tests
+│   ├── test_container_runtime.py        # Container runtime tests
+│   └── test_worker.py                   # Worker process tests
 ├── templates/            # HTML templates with EN/FR support
+│   ├── shared_gpu.html           # MIG GPU management page
+│   ├── dashboard.html            # Main dashboard
+│   └── ...                       # Other templates
 ├── static/               # CSS, JS, and static files
 ├── ssl/                  # SSL certificates
 ├── logs/                 # Application logs with Gunicorn support
@@ -349,6 +487,7 @@ ai-swautomorph/
 │   ├── NGINX_DYNAMIC_LOCATIONS.md # Dynamic nginx locations guide
 │   └── VIRTUAL_AGENTS_API.md     # Virtual agents API reference
 ├── conf/                 # Configuration files
+├── init_pltf.sh          # Platform initialization (Docker, NVIDIA drivers, MIG)
 └── deployControlPlan.sh  # Main deployment script
 ```
 
@@ -356,15 +495,23 @@ ai-swautomorph/
 
 - **Flask Application**: Multi-blueprint architecture with modular routes and virtual AI agents
 - **Database**: **PostgreSQL with connection pooling** for enterprise-grade performance and thread-safe operations
-- **Authentication**: Session-based with SSO token support and comprehensive user management
+- **Authentication**: Session-based with SSO token support, password reset, and two-factor authentication
 - **Deployment**: Multi-server support with capacity management, automatic allocation, and streaming APIs
+- **App Orchestrator**: Automated application lifecycle management with reconciliation loop
+- **Serverless Execution**: Docker-based job submission and execution engine with worker processes
+- **Deploy Templates**: Validated blueprint catalog (`deploy_templates` table) with a surface-agnostic deploy service shared by Dashboard, CLI, MCP, and REST
+- **Onboarding Wizard**: First-run setup that persists `conf/deploy.ini` atomically with a timestamped backup and hashes the admin password into the database
+- **Container Runtime**: Configurable runtime type — standard containers (runc) or MicroVM isolation (Kata Containers) for stronger workload boundaries
+- **MIG Shared GPU**: NVIDIA Multi-Instance GPU partitioning via SSH with per-server configuration and web UI
+- **Replication**: Peer-to-peer database replication across multiple servers with sync tokens
 - **Nginx Proxy**: Dynamic location blocks for user applications with automatic configuration
-- **Security**: ModSecurity WAF with OWASP CRS rules and input validation
+- **Security**: ModSecurity WAF with OWASP CRS rules, password reset, and 2FA via email
 - **Monitoring**: Health checks, database statistics, real-time streaming logs, and performance metrics
 - **Virtual AI Agents**: AI Chat Developer and Operations assistants with context-aware prompts
 - **Billing System**: Comprehensive cost tracking with activity logging, usage monitoring, and automated invoicing
 - **Multi-language**: English/French support with session-based language switching and bilingual documentation
 - **Backup System**: Automated hourly backups with S3 sync and interactive recovery tools
+- **Platform Init**: Automated server provisioning including Docker, NVIDIA drivers, and MIG mode setup
 
 ## Troubleshooting
 
@@ -381,10 +528,10 @@ sudo netstat -tulpn | grep -E ':(80|443|3000|5000)'
 
 # Permission issues
 sudo chown -R ubuntu:ubuntu /home/ubuntu/deployments/
-sudo chown -R ubuntu:ubuntu /home/ubuntu/ai-swautomorph/
+sudo chown -R ubuntu:ubuntu /home/ubuntu/<PLTF_FOLDER>/
 
 # Database issues
-python3 ./scripts/cloudstore_cli.py db-health
+python3 ./scripts/aipoweredstore_cli.py db-health
 ./deployControlPlan.sh --recover_db
 
 # SSL certificate issues
@@ -403,7 +550,7 @@ docker system prune -f
 
 # Complete reset (Local)
 sudo systemctl stop nginx gitea
-sudo rm -rf /etc/nginx/sites-enabled/ai-swautomorph
+sudo rm -rf /etc/nginx/sites-enabled/<PLTF_FOLDER>
 rm -rf softfluid/db/ai_swautomorph.db
 
 # Restart deployment

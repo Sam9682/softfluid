@@ -4,7 +4,7 @@
 
 ### Step 1: Generate Sync Secret (Run on ONE server)
 ```bash
-cd /home/ubuntu/ai-swautomorph
+cd /home/ubuntu/<PLTF_FOLDER>
 python3 -c "import secrets; print('SYNC_SECRET=' + secrets.token_hex(32))" | tee -a .env
 ```
 
@@ -43,7 +43,7 @@ curl -X POST https://192.168.1.10/register \
 ### Test 2: Verify User on Server B
 ```bash
 # On Server B (192.168.1.11)
-python3 scripts/cloudstore_cli.py list-users | grep testuser
+python3 scripts/aipoweredstore_cli.py list-users | grep testuser
 ```
 
 If user appears on Server B, replication is working! ✓

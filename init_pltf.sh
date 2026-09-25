@@ -25,7 +25,7 @@ print_warning() {
 }
 
 echo -e "${BLUE}+==========================================+${NC}"
-echo -e "${BLUE}|${NC}   SoftFluid Platform Setup    ${BLUE}|${NC}"
+echo -e "${BLUE}|${NC}   ai-powered-store Platform Setup    ${BLUE}|${NC}"
 echo -e "${BLUE}+==========================================+${NC}"
 echo ""
 
@@ -118,6 +118,61 @@ sudo chmod +x /usr/local/bin/docker-compose
 rm -f get-docker.sh
 print_success "Docker installed"
 
+# Install Kata Containers
+print_step "Installing Kata Containers..."
+cd /tmp
+wget -q https://github.com/kata-containers/kata-containers/releases/download/3.32.0/kata-static-3.32.0-amd64.tar.zst
+unzstd kata-static-3.32.0-amd64.tar.zst
+sudo tar xvf kata-static-3.32.0-amd64.tar > /dev/null 2>&1
+sudo mv ./opt/kata /opt/
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json > /dev/null <<EOF
+{
+    "runtimes": {
+        "kata": {
+            "runtimeType": "/opt/kata/bin/containerd-shim-kata-v2"
+        }
+    }
+}
+EOF
+sudo systemctl reload docker
+rm -f kata-static-3.32.0-amd64.tar.zst kata-static-3.32.0-amd64.tar
+cd - > /dev/null
+print_success "Kata Containers installed"
+
+# Install NVIDIA GPU Drivers and MIG Support
+print_step "Installing NVIDIA GPU drivers..."
+sudo apt install -y nvidia-driver-550 nvidia-utils-550 > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_success "NVIDIA drivers installed"
+    
+    print_step "Enabling MIG mode..."
+    sudo nvidia-smi -mig 1 > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        print_success "MIG mode enabled"
+    else
+        print_warning "MIG mode could not be enabled (GPU may not support MIG)"
+    fi
+    
+    print_step "Installing NVIDIA Container Toolkit..."
+    sudo apt install -y nvidia-container-toolkit > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        print_success "NVIDIA Container Toolkit installed"
+        
+        print_step "Verifying Docker GPU access..."
+        timeout 30 docker run --rm --gpus '"device=0"' nvidia/cuda:12.3.0-base-ubuntu22.04 nvidia-smi > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            print_success "Docker GPU access verified"
+        else
+            print_warning "Docker GPU access verification failed (GPU may not be available)"
+        fi
+    else
+        print_warning "NVIDIA Container Toolkit installation failed"
+    fi
+else
+    print_warning "NVIDIA driver installation failed (no GPU or incompatible hardware), skipping GPU setup"
+fi
+
 # Configure AWS
 print_step "Configuring AWS credentials..."
 mkdir -p ~/.aws
@@ -140,9 +195,10 @@ export AWS_ENDPOINT_URL_S3=https://s3.gra.io.cloud.ovh.net/
 print_success "AWS credentials configured"
 
 # Clone repository
-print_step "Cloning softfluid repository..."
-git clone https://github.com/Sam9682/softfluid.git > /dev/null 2>&1
-cd softfluid
+PLTF_FOLDER="${PLTF_FOLDER:-softfluid-explorer}"
+print_step "Cloning SoftFluid-Explorer repository..."
+git clone https://github.com/Sam9682/softfluid-explorer.git ${PLTF_FOLDER} > /dev/null 2>&1
+cd ${PLTF_FOLDER}
 git submodule update --init --recursive > /dev/null 2>&1
 print_success "Repository cloned"
 
@@ -167,7 +223,7 @@ echo ""
 echo -e "${GREEN}[OK] Installation completed successfully!${NC}"
 echo ""
 print_warning "Don't forget to :"
-print_warning "     - modify ./conf/deploy.ini with your platform settings, PLTF_NAME and DOMAIN values"
-print_warning "     - add ssl certificate in ~/softfluid/ssl/fullchain_domain.crt for nginx https"
-print_warning "     - add ssl private key in ~/softfluid/ssl/privateKey_domain.key for nginx https"
+print_warning "     - modify ./conf/deploy.ini with your platform settings, PLTF_NAME, PLTF_FOLDER and DOMAIN values"
+print_warning "     - add ssl certificate in ~/${PLTF_FOLDER}/ssl/fullchain_domain.crt for nginx https"
+print_warning "     - add ssl private key in ~/${PLTF_FOLDER}/ssl/privateKey_domain.key for nginx https"
 print_warning "     - enter aws_access_key_id & aws_secret_access_key in ~/.aws/credentials for s3 synchronization"

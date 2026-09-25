@@ -13,7 +13,8 @@
         <form id="registerForm" method="POST" action="/register">
             <div class="form-group">
                 <label for="username">{{ get_text('username') }}:</label>
-                <input type="text" id="username" name="username" required>
+                <input type="text" id="username" name="username" pattern="[a-zA-Z0-9]+" required>
+                <small class="form-hint">{{ get_text('username_hint') }}</small>
             </div>
             <div class="form-group">
                 <label for="email">{{ get_text('email') }}:</label>

@@ -27,29 +27,42 @@ def validate_image_registry(image: str, whitelist: list) -> bool:
     prefix (e.g. 'python:3.11' or 'library/python:3.11') are assumed to
     come from 'docker.io'.
 
+    Docker image reference parsing logic:
+    - If the first path component (before the first '/') contains a '.' or ':'
+      or equals 'localhost', it is treated as the registry hostname.
+    - Otherwise, the image is assumed to come from 'docker.io'.
+
     Args:
         image: Full or short image reference (e.g. 'ghcr.io/org/app:latest',
-               'python:3.11', 'myregistry.com/image').
+               'python:3.11', 'myregistry.com/image',
+               'registry.example.com:5000/myapp:latest').
         whitelist: List of approved registry hostnames.
 
     Returns:
         True if the image's registry is in the whitelist, False otherwise.
     """
-    # Strip tag or digest from the image reference
-    # e.g. 'registry.example.com/myapp:latest' -> 'registry.example.com/myapp'
-    image_ref = image.split("@")[0].split(":")[0]
+    # Strip digest (e.g. @sha256:abc123...)
+    image_ref = image.split("@")[0]
 
-    # Determine the registry from the first path component
+    # Split on '/' to get path components
     parts = image_ref.split("/")
 
+    # Determine the first component (potential registry)
+    first_component = parts[0]
+
     if len(parts) == 1:
-        # Simple image name like 'python' — defaults to docker.io
-        registry = "docker.io"
-    elif len(parts) == 2 and "." not in parts[0] and ":" not in parts[0]:
-        # User/image like 'library/python' — defaults to docker.io
+        # Simple image name like 'python:3.11' — defaults to docker.io
         registry = "docker.io"
     else:
-        # Explicit registry like 'ghcr.io/org/app' or 'registry.example.com/myapp'
-        registry = parts[0]
+        # Check if first component looks like a registry hostname:
+        # It contains a dot (e.g. 'ghcr.io', 'registry.example.com')
+        # or a colon (e.g. 'localhost:5000', 'registry.example.com:5000')
+        # or equals 'localhost'
+        if "." in first_component or ":" in first_component or first_component == "localhost":
+            # Extract hostname without port for whitelist comparison
+            registry = first_component.split(":")[0]
+        else:
+            # User/image like 'library/python:3.11' — defaults to docker.io
+            registry = "docker.io"
 
     return registry in whitelist

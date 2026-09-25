@@ -1,0 +1,4 @@
+2026-09-17 11:49:16,830 - src.template_catalog - WARNING - Deploy template 'bad1' rejected; failing fields: source_image
+2026-09-17 11:49:16,837 - src.template_catalog - WARNING - Deploy template 'bad2' rejected; failing fields: ports
+2026-09-17 11:49:16,839 - src.template_catalog - WARNING - Deploy template 'b' rejected; failing fields: source_image, ports, memory_mb
+2026-09-17 11:49:16,840 - src.template_catalog - WARNING - Template catalog loaded with no valid templates

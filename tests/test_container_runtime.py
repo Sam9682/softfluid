@@ -322,6 +322,44 @@ class TestPodmanRuntimeCommands:
         assert cmd[1] == "run"
         assert container_id == "podman-container-id"
 
+    @patch("src.serverless.container_runtime.uuid.uuid4")
+    @patch("src.serverless.container_runtime.subprocess.run")
+    def test_run_container_includes_security_flags(self, mock_run, mock_uuid):
+        """Podman applies the same security flags as Docker."""
+        mock_uuid.return_value = "test-uuid-podman-sec"
+        mock_run.return_value = MagicMock(
+            returncode=0, stdout="podman-cid\n", stderr=""
+        )
+        rt = PodmanRuntime()
+        rt.run_container(
+            image="python:3.11",
+            command=["python", "app.py"],
+            env={"ENV_VAR": "test"},
+            timeout=120,
+        )
+        cmd = mock_run.call_args[0][0]
+        assert cmd[0] == "podman"
+        assert "--read-only" in cmd
+        assert "--user" in cmd
+        assert "nobody" in cmd
+        assert "--cap-drop" in cmd
+        assert "ALL" in cmd
+        assert "--memory" in cmd
+        assert "--cpus" in cmd
+        assert "--network" in cmd
+        assert "none" in cmd
+        assert "--security-opt" in cmd
+        assert "no-new-privileges" in cmd
+        assert "--pids-limit" in cmd
+        assert "256" in cmd
+        # Verify env passed
+        assert "-e" in cmd
+        assert "ENV_VAR=test" in cmd
+        # Image and command at end
+        assert cmd[-3] == "python:3.11"
+        assert cmd[-2] == "python"
+        assert cmd[-1] == "app.py"
+
     @patch("src.serverless.container_runtime.subprocess.run")
     def test_stop_container_uses_podman(self, mock_run):
         mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")

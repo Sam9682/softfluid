@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# softfluid Production Deployment Script
+# SoftFluid-Explorer Production Deployment Script
 # Organized with functions for better maintainability
 
 set -e
@@ -40,6 +40,10 @@ load_config() {
 # Load configuration first
 load_config
 
+# Local temporary directory (in the application folder instead of system /tmp)
+TMP_DIR="./tmp"
+mkdir -p "$TMP_DIR"
+
 # Activate virtual environment if it exists
 if [ -d ".venv" ]; then
     echo "🐍 Activating virtual environment..."
@@ -63,11 +67,13 @@ WARN="${YELLOW}[WARN]${NC}"
 INFO="${BLUE}[INFO]${NC}"
 
 # Global Variables (with fallback defaults)
-NAME_OF_APPLICATION=${NAME_OF_APPLICATION:-"softfluid"}
+NAME_OF_APPLICATION=${NAME_OF_APPLICATION:-"softfluid-explorer"}
 APPLICATION_IDENTITY_NUMBER=${APPLICATION_IDENTITY_NUMBER:-0}
 RANGE_START_CONTROLPLAN=${RANGE_START_CONTROLPLAN:-80}
 RANGE_RESERVED_CONTROLPLAN=${RANGE_RESERVED_CONTROLPLAN:-0}
-S3_BUCKET_NAME=${S3_BUCKET_NAME:-"softfluid-psmc-s3"}
+S3_BUCKET_NAME=${S3_BUCKET_NAME:-"softfluid-s3"}
+PLTF_FOLDER=${PLTF_FOLDER:-"softfluid-explorer"}
+LINUX_USER_INSTALLATION=${LINUX_USER_INSTALLATION:-"ubuntu"}
 
 # Global Parameters (command line args override config)
 COMMAND=${1:-help}
@@ -78,13 +84,13 @@ USER_EMAIL=${5:-${DEFAULT_USER_EMAIL:-"admin@softfluid.fr"}}
 DESCRIPTION=${6:-${DEFAULT_DESCRIPTION:-"Basic Admin user for Control Plan"}}
 
 # Configuration (loaded from deploy.ini with fallback defaults)
-DOMAIN=${DOMAIN:-"softfluid.fr"}
-EMAIL=${EMAIL:-"admin@softfluid.fr"}
+DOMAIN=${DOMAIN:-"softfluid.com"}
+EMAIL=${EMAIL:-"admin@softfluid.com"}
 ENV_FILE=${ENV_FILE:-".env.prod"}
 GITEA_VERSION=${GITEA_VERSION:-"1.21.3"}
 GITEA_ADMIN_USER=${GITEA_ADMIN_USER:-"gitadmin"}
 GITEA_ADMIN_PASSWORD=${GITEA_ADMIN_PASSWORD:-"password"}
-GITEA_ADMIN_EMAIL=${GITEA_ADMIN_EMAIL:-"admin@softfluid.fr"}
+GITEA_ADMIN_EMAIL=${GITEA_ADMIN_EMAIL:-"admin@softfluid.com"}
 
 # Normalize LOCAL_MODE parameter (handle --locally and --docker)
 case "$LOCAL_MODE" in
@@ -184,10 +190,20 @@ get_server_ip() {
 
 # Calculate ports (convert alphanumeric USER_ID to numeric for port calculation)
 calculate_ports() {
+    # 12 consecutive ports per application (6 HTTP + 6 HTTPS), allocated as
+    # alternating HTTP/HTTPS pairs starting from RANGE_START_CONTROLPLAN.
     HTTP_PORT=${RANGE_START_CONTROLPLAN}
     HTTPS_PORT=$((HTTP_PORT + 1))
-    HTTPS_PORT2=$((HTTPS_PORT + 1))
-    HTTP_PORT2=$((HTTPS_PORT2 + 1))
+    HTTP_PORT2=$((HTTPS_PORT + 1))
+    HTTPS_PORT2=$((HTTP_PORT2 + 1))
+    HTTP_PORT3=$((HTTPS_PORT2 + 1))
+    HTTPS_PORT3=$((HTTP_PORT3 + 1))
+    HTTP_PORT4=$((HTTPS_PORT3 + 1))
+    HTTPS_PORT4=$((HTTP_PORT4 + 1))
+    HTTP_PORT5=$((HTTPS_PORT4 + 1))
+    HTTPS_PORT5=$((HTTP_PORT5 + 1))
+    HTTP_PORT6=$((HTTPS_PORT5 + 1))
+    HTTPS_PORT6=$((HTTP_PORT6 + 1))
 }
 
 # Display environment variables for operations
@@ -200,9 +216,17 @@ show_environment() {
     echo "  USER_NAME=${USER_NAME}"
     echo "  USER_EMAIL=${USER_EMAIL}"
     echo "  HTTP_PORT=${HTTP_PORT}"
-    echo "  HTTP_PORT2=${HTTP_PORT2}"
     echo "  HTTPS_PORT=${HTTPS_PORT}"
+    echo "  HTTP_PORT2=${HTTP_PORT2}"
     echo "  HTTPS_PORT2=${HTTPS_PORT2}"
+    echo "  HTTP_PORT3=${HTTP_PORT3}"
+    echo "  HTTPS_PORT3=${HTTPS_PORT3}"
+    echo "  HTTP_PORT4=${HTTP_PORT4}"
+    echo "  HTTPS_PORT4=${HTTPS_PORT4}"
+    echo "  HTTP_PORT5=${HTTP_PORT5}"
+    echo "  HTTPS_PORT5=${HTTPS_PORT5}"
+    echo "  HTTP_PORT6=${HTTP_PORT6}"
+    echo "  HTTPS_PORT6=${HTTPS_PORT6}"
     echo ""
 }
 
@@ -402,8 +426,11 @@ backup_logs() {
 
     if [ -d "logs" ] && [ "$(ls -A logs 2>/dev/null)" ]; then
         echo "  📄 Synchronizing logs to S3..."
-        aws s3 sync ./logs s3://${S3_BUCKET_NAME}/${NAME_OF_APPLICATION}/logs --profile OVH-SWAUTOMORPH
-        echo -e "  $OK Logs backup completed"
+        if aws s3 sync ./logs s3://${S3_BUCKET_NAME}/${NAME_OF_APPLICATION}/logs --profile OVH-SWAUTOMORPH; then
+            echo -e "  $OK Logs backup completed"
+        else
+            echo -e "  ⚠️ Logs S3 sync failed or not configured - continuing"
+        fi
     else
         echo -e "  $WARN No logs directory or logs found - skipping backup"
     fi
@@ -450,12 +477,13 @@ recover_database() {
     echo "📍 Select backup source:"
 
     if python3 -c "from simple_term_menu import TerminalMenu" 2>/dev/null; then
-        BACKUP_SOURCE=$(S3_BUCKET_NAME="$S3_BUCKET_NAME" python3 << 'EOF'
+        BACKUP_SOURCE=$(S3_BUCKET_NAME="$S3_BUCKET_NAME" NAME_OF_APPLICATION="$NAME_OF_APPLICATION" python3 << 'EOF'
 import os
 from simple_term_menu import TerminalMenu
 
-s3_bucket = os.environ.get('S3_BUCKET_NAME', 'softfluid-psmc-s3')
-options = ["Local backups (./softfluid/db/backup)", f"Remote S3 backups (s3://{s3_bucket}/${NAME_OF_APPLICATION}/db/backup)"]
+s3_bucket = os.environ.get('S3_BUCKET_NAME', 'softfluid-s3')
+app_name = os.environ.get('NAME_OF_APPLICATION', 'softfluid-explorer')
+options = ["Local backups (./softfluid/db/backup)", f"Remote S3 backups (s3://{s3_bucket}/{app_name}/db/backup)"]
 terminal_menu = TerminalMenu(
     options,
     title="📍 Select backup source:",
@@ -539,12 +567,12 @@ EOF
 
         # Select server
         if python3 -c "from simple_term_menu import TerminalMenu" 2>/dev/null; then
-            printf '%s\n' "${SERVER_IPS[@]}" > /tmp/server_ips.txt
+            printf '%s\n' "${SERVER_IPS[@]}" > "$TMP_DIR/server_ips.txt"
 
             SELECTED_SERVER=$(python3 << 'EOF'
 from simple_term_menu import TerminalMenu
 
-with open('/tmp/server_ips.txt', 'r') as f:
+with open('./tmp/server_ips.txt', 'r') as f:
     server_ips = [line.strip() for line in f if line.strip()]
 
 terminal_menu = TerminalMenu(
@@ -563,7 +591,7 @@ if menu_entry_index is not None:
     print(selected)
 EOF
 )
-            rm -f /tmp/server_ips.txt
+            rm -f "$TMP_DIR/server_ips.txt"
         else
             # Fallback to numbered selection
             echo "Available servers:"
@@ -623,12 +651,12 @@ EOF
     # Use simple-term-menu for backup selection
     if python3 -c "from simple_term_menu import TerminalMenu" 2>/dev/null; then
         # Create temporary file with backup dates
-        printf '%s\n' "${BACKUP_DATES[@]}" > /tmp/backup_dates.txt
+        printf '%s\n' "${BACKUP_DATES[@]}" > "$TMP_DIR/backup_dates.txt"
 
         SELECTED_BACKUP=$(python3 << 'EOF'
 from simple_term_menu import TerminalMenu
 
-with open('/tmp/backup_dates.txt', 'r') as f:
+with open('./tmp/backup_dates.txt', 'r') as f:
     backup_dates = [line.strip() for line in f if line.strip()]
 
 terminal_menu = TerminalMenu(
@@ -645,7 +673,7 @@ if menu_entry_index is not None:
     print(backup_dates[menu_entry_index])
 EOF
 )
-        rm -f /tmp/backup_dates.txt
+        rm -f "$TMP_DIR/backup_dates.txt"
     else
         # Fallback to numbered selection
         echo "📅 Available backup dates:"
@@ -804,10 +832,11 @@ stop_services() {
     remove_backup_cron
 
     # Create database backup before stopping services
-    backup_database
+    backup_database || echo -e "  ⚠️ Pre-stop database backup failed; continuing to stop services anyway"
 
-    # Create logs backup before stopping services
-    backup_logs
+    # Create logs backup before stopping services (best-effort:
+    # a logs-backup failure must NOT prevent services from being stopped)
+    backup_logs || echo -e "  ⚠️ Pre-stop logs backup failed; continuing to stop services anyway"
 
     CLEANUP_NEEDED=false
 
@@ -902,7 +931,7 @@ remove_gitea() {
     # Remove configuration and data
     sudo rm -rf /etc/gitea
     sudo rm -rf /var/lib/gitea
-    sudo rm -rf /home/ubuntu/admin
+    sudo rm -rf /home/${LINUX_USER_INSTALLATION}/admin
 
     # Remove git user
     sudo userdel git 2>/dev/null || true
@@ -1083,7 +1112,7 @@ show_nginx_logs() {
 }
 
 show_docker_logs() {
-    HTTP_PORT=$HTTP_PORT HTTPS_PORT=$((HTTPS_PORT + 363)) HTTPS_PORT2=$((HTTPS_PORT2 + 363)) USER_ID=$USER_ID docker-compose logs -f
+    HTTP_PORT=$HTTP_PORT HTTPS_PORT=$((HTTPS_PORT + 363)) HTTP_PORT2=$HTTP_PORT2 HTTPS_PORT2=$((HTTPS_PORT2 + 363)) HTTP_PORT3=$HTTP_PORT3 HTTPS_PORT3=$((HTTPS_PORT3 + 363)) HTTP_PORT4=$HTTP_PORT4 HTTPS_PORT4=$((HTTPS_PORT4 + 363)) HTTP_PORT5=$HTTP_PORT5 HTTPS_PORT5=$((HTTPS_PORT5 + 363)) HTTP_PORT6=$HTTP_PORT6 HTTPS_PORT6=$((HTTPS_PORT6 + 363)) USER_ID=$USER_ID docker-compose logs -f
 }
 
 # Restart services
@@ -1231,7 +1260,7 @@ reload_nginx_config() {
 }
 
 restart_docker_services() {
-    HTTP_PORT=$HTTP_PORT HTTPS_PORT=$((HTTPS_PORT + 363)) HTTPS_PORT2=$((HTTPS_PORT2 + 363)) USER_ID=$USER_ID docker-compose restart
+    HTTP_PORT=$HTTP_PORT HTTPS_PORT=$((HTTPS_PORT + 363)) HTTP_PORT2=$HTTP_PORT2 HTTPS_PORT2=$((HTTPS_PORT2 + 363)) HTTP_PORT3=$HTTP_PORT3 HTTPS_PORT3=$((HTTPS_PORT3 + 363)) HTTP_PORT4=$HTTP_PORT4 HTTPS_PORT4=$((HTTPS_PORT4 + 363)) HTTP_PORT5=$HTTP_PORT5 HTTPS_PORT5=$((HTTPS_PORT5 + 363)) HTTP_PORT6=$HTTP_PORT6 HTTPS_PORT6=$((HTTPS_PORT6 + 363)) USER_ID=$USER_ID docker-compose restart
 }
 
 # Start services
@@ -1286,8 +1315,8 @@ setup_gitea() {
         echo "  📦 Installing Gitea..."
 
         # Download and install Gitea
-        wget -O /tmp/gitea https://dl.gitea.io/gitea/1.21.3/gitea-1.21.3-linux-amd64
-        sudo mv /tmp/gitea /usr/local/bin/gitea
+        wget -O "$TMP_DIR/gitea" https://dl.gitea.io/gitea/1.21.3/gitea-1.21.3-linux-amd64
+        sudo mv "$TMP_DIR/gitea" /usr/local/bin/gitea
         sudo chmod +x /usr/local/bin/gitea
 
         # Create gitea user
@@ -1364,21 +1393,21 @@ configure_gitea() {
     echo "  ⚙️ Configuring Gitea..."
 
     # Create required directories
-    sudo mkdir -p /home/ubuntu/admin
-    sudo mkdir -p /home/ubuntu/admin/db
-    sudo mkdir -p /home/ubuntu/admin/data
-    sudo mkdir -p /home/ubuntu/admin/data/gitea-repositories
-    sudo chown -R git:git /home/ubuntu/admin
-    sudo chmod a+w /home/ubuntu/admin/db/gitea.db
+    sudo mkdir -p /home/${LINUX_USER_INSTALLATION}/admin
+    sudo mkdir -p /home/${LINUX_USER_INSTALLATION}/admin/db
+    sudo mkdir -p /home/${LINUX_USER_INSTALLATION}/admin/data
+    sudo mkdir -p /home/${LINUX_USER_INSTALLATION}/admin/data/gitea-repositories
+    sudo chown -R git:git /home/${LINUX_USER_INSTALLATION}/admin
+    sudo chmod a+w /home/${LINUX_USER_INSTALLATION}/admin/db/gitea.db
 
     # Create Gitea configuration
     sudo tee /etc/gitea/app.ini > /dev/null << EOF
 [database]
 DB_TYPE = sqlite3
-PATH = /home/ubuntu/admin/db/gitea.db
+PATH = /home/${LINUX_USER_INSTALLATION}/admin/db/gitea.db
 
 [repository]
-ROOT = /home/ubuntu/admin/data/gitea-repositories
+ROOT = /home/${LINUX_USER_INSTALLATION}/admin/data/gitea-repositories
 
 [server]
 DOMAIN = www.${S3_BUCKET_NAME}.com
@@ -1404,7 +1433,7 @@ DISABLE_QUERY_AUTH_TOKEN = true
 
 [git.lfs]
 START_SERVER = true
-CONTENT_PATH = /home/ubuntu/admin
+CONTENT_PATH = /home/${LINUX_USER_INSTALLATION}/admin
 
 [repository]
 ENABLE_PUSH_CREATE_USER = true
@@ -1477,16 +1506,16 @@ setup_api_token() {
         --token-name "api-access" \
         --scopes "write:admin,write:user,write:repository" \
         --config /etc/gitea/app.ini \
-        --work-path /var/lib/gitea 2>/dev/null | grep -o '[a-f0-9]\{40\}' > /tmp/gitea_token_temp 2>/dev/null || true
+        --work-path /var/lib/gitea 2>/dev/null | grep -o '[a-f0-9]\{40\}' > "$TMP_DIR/gitea_token_temp" 2>/dev/null || true
 
-    if [ -f "/tmp/gitea_token_temp" ] && [ -s "/tmp/gitea_token_temp" ]; then
-        TOKEN=$(cat /tmp/gitea_token_temp)
-        echo "$TOKEN" > /tmp/gitea_admin_token
-        chmod 600 /tmp/gitea_admin_token
-        rm -f /tmp/gitea_token_temp
-        echo "  ✅ API token created and saved to /tmp/gitea_admin_token"
+    if [ -f "$TMP_DIR/gitea_token_temp" ] && [ -s "$TMP_DIR/gitea_token_temp" ]; then
+        TOKEN=$(cat "$TMP_DIR/gitea_token_temp")
+        echo "$TOKEN" > "$TMP_DIR/gitea_admin_token"
+        chmod 600 "$TMP_DIR/gitea_admin_token"
+        rm -f "$TMP_DIR/gitea_token_temp"
+        echo "  ✅ API token created and saved to $TMP_DIR/gitea_admin_token"
     else
-        rm -f /tmp/gitea_token_temp
+        rm -f "$TMP_DIR/gitea_token_temp"
         echo "  ⚠️ Could not generate API token automatically (timeout or error)"
         echo "  📝 Manual token creation: Login to http://localhost:3000 > Settings > Applications"
     fi
@@ -1495,7 +1524,7 @@ setup_api_token() {
 start_docker_deployment() {
     echo "🐳 Starting Docker deployment..."
     cleanup_docker
-    docker-compose up -d --build
+    HTTP_PORT=$HTTP_PORT HTTPS_PORT=$((HTTPS_PORT + 363)) HTTP_PORT2=$HTTP_PORT2 HTTPS_PORT2=$((HTTPS_PORT2 + 363)) HTTP_PORT3=$HTTP_PORT3 HTTPS_PORT3=$((HTTPS_PORT3 + 363)) HTTP_PORT4=$HTTP_PORT4 HTTPS_PORT4=$((HTTPS_PORT4 + 363)) HTTP_PORT5=$HTTP_PORT5 HTTPS_PORT5=$((HTTPS_PORT5 + 363)) HTTP_PORT6=$HTTP_PORT6 HTTPS_PORT6=$((HTTPS_PORT6 + 363)) USER_ID=$USER_ID docker-compose up -d --build
 
     # Wait and migrate if needed
     if [ "$USE_POSTGRES" = "true" ] && [ -f "softfluid/db/ai_swautomorph.db" ]; then
@@ -1576,9 +1605,9 @@ start_flask_application() {
         export POSTGRES_USER=${POSTGRES_USER:-swautomorph}
         export POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-swautomorph_password}
         export USE_POSTGRES=true
-        export PYTHONPATH=/home/ubuntu/${NAME_OF_APPLICATION}
+        export PYTHONPATH=/home/${LINUX_USER_INSTALLATION}/${NAME_OF_APPLICATION}
 
-        if python3 ./scripts/cloudstore_cli.py init-db; then
+        if python3 ./scripts/aipoweredstore_cli.py init-db; then
             echo "  ✅ Database initialized successfully"
         else
             echo "  ⚠️ Database initialization failed - continuing anyway"
@@ -1594,8 +1623,8 @@ start_flask_application() {
         GUNICORN_CMD=".venv/bin/gunicorn"
     elif command -v gunicorn >/dev/null 2>&1; then
         GUNICORN_CMD="gunicorn"
-    elif [ -f "/home/ubuntu/.local/bin/gunicorn" ]; then
-        GUNICORN_CMD="/home/ubuntu/.local/bin/gunicorn"
+    elif [ -f "/home/${LINUX_USER_INSTALLATION}/.local/bin/gunicorn" ]; then
+        GUNICORN_CMD="/home/${LINUX_USER_INSTALLATION}/.local/bin/gunicorn"
     elif python3 -c "import gunicorn" >/dev/null 2>&1; then
         GUNICORN_CMD="python3 -m gunicorn"
     else
@@ -1664,7 +1693,7 @@ enable_modsecurity_module() {
 
 create_nginx_config() {
     # Start with empty config
-    > /tmp/${NAME_OF_APPLICATION}-site
+    > $TMP_DIR/${NAME_OF_APPLICATION}-site
 
     # Process secondary domains first
     if [ -n "${SECONDARY_DOMAINS:-}" ]; then
@@ -1678,13 +1707,13 @@ create_nginx_config() {
             proxy_pass=$(echo "$proxy_pass" | xargs)
 
             if [ -n "$domain" ] && [ -n "$server_names" ]; then
-                cat >> /tmp/${NAME_OF_APPLICATION}-site << EOF
+                cat >> $TMP_DIR/${NAME_OF_APPLICATION}-site << EOF
 server {
     listen 443 ssl;
     server_name ${server_names};
 
-    ssl_certificate /home/ubuntu/softfluid/ssl/${domain}/fullchain_domain.crt;
-    ssl_certificate_key /home/ubuntu/softfluid/ssl/${domain}/privateKey_domain.key;
+    ssl_certificate /home/${LINUX_USER_INSTALLATION}/${PLTF_FOLDER}/ssl/${domain}/fullchain_domain.crt;
+    ssl_certificate_key /home/${LINUX_USER_INSTALLATION}/${PLTF_FOLDER}/ssl/${domain}/privateKey_domain.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 
@@ -1703,7 +1732,7 @@ EOF
     fi
 
     # HTTP redirect for main domain
-    cat >> /tmp/${NAME_OF_APPLICATION}-site << EOF
+    cat >> $TMP_DIR/${NAME_OF_APPLICATION}-site << EOF
 server {
     listen 80;
     server_name ${DOMAIN} www.${DOMAIN};
@@ -1713,20 +1742,20 @@ server {
 EOF
 
     # Main domain HTTPS server block
-    cat >> /tmp/${NAME_OF_APPLICATION}-site << EOF
+    cat >> $TMP_DIR/${NAME_OF_APPLICATION}-site << EOF
 server {
     listen 443 ssl;
     server_name ${DOMAIN} www.${DOMAIN};
 
-    ssl_certificate /home/ubuntu/softfluid/ssl/${DOMAIN}/fullchain_domain.crt;
-    ssl_certificate_key /home/ubuntu/softfluid/ssl/${DOMAIN}/privateKey_domain.key;
+    ssl_certificate /home/${LINUX_USER_INSTALLATION}/${PLTF_FOLDER}/ssl/${DOMAIN}/fullchain_domain.crt;
+    ssl_certificate_key /home/${LINUX_USER_INSTALLATION}/${PLTF_FOLDER}/ssl/${DOMAIN}/privateKey_domain.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
 EOF
 
     # Add ModSecurity configuration only if available
     if [ "${MODSECURITY_AVAILABLE:-false}" = "true" ]; then
-        cat >> /tmp/${NAME_OF_APPLICATION}-site << EOF
+        cat >> $TMP_DIR/${NAME_OF_APPLICATION}-site << EOF
 
     # WAF Protection
     modsecurity on;
@@ -1738,7 +1767,7 @@ EOF
     fi
 
     # Add location blocks for main domain
-    cat >> /tmp/${NAME_OF_APPLICATION}-site << EOF
+    cat >> $TMP_DIR/${NAME_OF_APPLICATION}-site << EOF
 
     location / {
         proxy_pass http://localhost:${FLASK_PORT:-5000};
@@ -1772,7 +1801,7 @@ EOF
 }
 
 enable_nginx_site() {
-    sudo mv /tmp/${NAME_OF_APPLICATION}-site /etc/nginx/sites-available/${NAME_OF_APPLICATION}
+    sudo mv $TMP_DIR/${NAME_OF_APPLICATION}-site /etc/nginx/sites-available/${NAME_OF_APPLICATION}
     sudo ln -sf /etc/nginx/sites-available/${NAME_OF_APPLICATION} /etc/nginx/sites-enabled/
 }
 
@@ -1799,7 +1828,7 @@ configure_firewall() {
 
 cleanup_docker() {
     echo "🧹 Cleaning up..."
-    HTTP_PORT=$HTTP_PORT HTTPS_PORT=$((HTTPS_PORT + 363)) HTTPS_PORT2=$((HTTPS_PORT2 + 363)) USER_ID=$USER_ID docker-compose down --remove-orphans
+    HTTP_PORT=$HTTP_PORT HTTPS_PORT=$((HTTPS_PORT + 363)) HTTP_PORT2=$HTTP_PORT2 HTTPS_PORT2=$((HTTPS_PORT2 + 363)) HTTP_PORT3=$HTTP_PORT3 HTTPS_PORT3=$((HTTPS_PORT3 + 363)) HTTP_PORT4=$HTTP_PORT4 HTTPS_PORT4=$((HTTPS_PORT4 + 363)) HTTP_PORT5=$HTTP_PORT5 HTTPS_PORT5=$((HTTPS_PORT5 + 363)) HTTP_PORT6=$HTTP_PORT6 HTTPS_PORT6=$((HTTPS_PORT6 + 363)) USER_ID=$USER_ID docker-compose down --remove-orphans
 }
 
 # Validate user input
@@ -2047,7 +2076,7 @@ EOF
 
 # Show usage information
 help() {
-    echo "🚀 softfluid Deployment Script v${VERSION}"
+    echo "🚀 SoftFluid-Explorer Deployment Script v${VERSION}"
     echo "Usage: $0 [COMMAND] [MODE] [USER_ID] [USER_NAME] [USER_EMAIL] [DESCRIPTION] [OPTIONS]"
     echo ""
     echo "COMMANDS:"
@@ -2181,8 +2210,8 @@ help() {
     echo "  • Docker Containers (optional)"
     echo ""
     echo "ACCESS URLS:"
-    echo "  • Main App: https://www.softfluid.fr"
-    echo "  • Gitea:    https://www.softfluid.fr/gitea"
+    echo "  • Main App: https://www.softfluid.com"
+    echo "  • Gitea:    https://www.softfluid.com/gitea"
     echo "  • Local:    https://localhost (with SSL certificates)"
 }
 
@@ -2279,7 +2308,7 @@ main() {
             exit 0
             ;;
         "version"|"--version"|"-v")
-            echo "softfluid v${VERSION}"
+            echo "SoftFluid-Explorer v${VERSION}"
             exit 0
             ;;
         *)

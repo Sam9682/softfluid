@@ -10,12 +10,15 @@
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <a href="https://www.{{ DOMAIN }}" class="nav-title">{{ PLTF_NAME }} <span style="font-size: 10px; color: #aaa;">v{{ APP_VERSION }}</span></a>
+            <a href="https://www.{{ DOMAIN|default('softfluid.fr') }}" class="nav-title">{{ PLTF_NAME }} <span style="font-size: 10px; color: #aaa;">v{{ APP_VERSION }}</span></a>
             <div class="nav-center">
                 <div class="nav-links">
                     {% if session.user_id %}
                         {% if username %}<span class="nav-user">{{ get_text('welcome') }}, {{ username }}</span>{% endif %}
                         <a href="javascript:void(0)" onclick="showTab('apps')" id="navApps" class="nav-active">{{ get_text('applications') }}</a>
+                        <a href="javascript:void(0)" onclick="showTab('orchestratorServerless')" id="navOrchestratorServerless">🚀 Serverless</a>
+                        <a href="javascript:void(0)" onclick="showTab('marketplace')" id="navMarketplace">🛒 {{ get_text('marketplace') }}</a>
+                        <a href="javascript:void(0)" onclick="showTab('sandbox')" id="navSandbox">🧪 {{ get_text('sandbox') }}</a>
                         <a href="javascript:void(0)" onclick="showTab('billing')" id="navBilling">{{ get_text('billing') }}</a>
                         <a href="javascript:void(0)" onclick="showTab('security')" id="navSecurity">🔐</a>
                         {% if username == 'admin' %}
@@ -39,6 +42,9 @@
                                 <a href="{{ url_for('main.view_doc', filename='DEPLOYMENT_GUIDE.md') }}">Deployment Guide</a>
                                 <a href="{{ url_for('main.userguide') }}">User Guide</a>
                                 <a href="{{ url_for('main.view_doc', filename='LIST_OF_APP_AVAILABLE.md') }}">Available Applications</a>
+                                <a href="{{ url_for('main.view_doc', filename='SERVERLESS.md') }}">Serverless</a>
+                                <a href="{{ url_for('main.view_doc', filename='SHARE_GPU_DOCKER.md') }}">Share GPU Docker</a>
+                                <a href="{{ url_for('main.view_doc', filename='softfluid-explorer.md') }}">SoftFluid AI-Powered Store</a>
                             </div>
                         </div>
                         <a href="{{ url_for('auth.logout') }}" class="nav-logout">{{ get_text('logout') }}</a>
@@ -50,6 +56,9 @@
                                 <a href="{{ url_for('main.view_doc', filename='DEPLOYMENT_GUIDE.md') }}">Deployment Guide</a>
                                 <a href="{{ url_for('main.userguide') }}">User Guide</a>
                                 <a href="{{ url_for('main.view_doc', filename='LIST_OF_APP_AVAILABLE.md') }}">Available Applications</a>
+                                <a href="{{ url_for('main.view_doc', filename='SERVERLESS.md') }}">Serverless</a>
+                                <a href="{{ url_for('main.view_doc', filename='SHARE_GPU_DOCKER.md') }}">Share GPU Docker</a>
+                                <a href="{{ url_for('main.view_doc', filename='softfluid-explorer.md') }}">SoftFluid AI-Powered Store</a>
                             </div>
                         </div>
                         <a href="{{ url_for('main.index') }}">{{ get_text('login') }}</a>
@@ -57,8 +66,8 @@
                 </div>
             </div>
             <div class="lang-toggle">
-                <button id="layoutToggle" class="btn-icon" onclick="toggleLayout()" title="Toggle Layout">
-                    📱
+                <button id="layoutToggle" class="btn-icon" onclick="toggleLayout()" title="Switch to Horizontal Layout">
+                    🖥️
                 </button>
                 <a href="{{ url_for('main.set_language', language='en') }}" class="lang-btn {% if current_lang == 'en' %}active{% endif %}">EN</a>
                 <a href="{{ url_for('main.set_language', language='fr') }}" class="lang-btn {% if current_lang == 'fr' %}active{% endif %}">FR</a>
@@ -70,6 +79,9 @@
                 {% if session.user_id %}
                     {% if username %}<span class="nav-user">{{ get_text('welcome') }}, {{ username }}</span>{% endif %}
                     <a href="javascript:void(0)" onclick="showTab('apps')">{{ get_text('applications') }}</a>
+                    <a href="javascript:void(0)" onclick="showTab('orchestratorServerless')">🚀 Serverless</a>
+                    <a href="javascript:void(0)" onclick="showTab('marketplace')">🛒 {{ get_text('marketplace') }}</a>
+                    <a href="javascript:void(0)" onclick="showTab('sandbox')">🧪 {{ get_text('sandbox') }}</a>
                     <a href="javascript:void(0)" onclick="showTab('billing')">{{ get_text('billing') }}</a>
                     <a href="javascript:void(0)" onclick="showTab('security')">🔐 {{ get_text('account_security') }}</a>
                     {% if username == 'admin' %}
@@ -85,17 +97,19 @@
                     <a href="{{ url_for('main.view_doc', filename='DEPLOYMENT_GUIDE.md') }}">Deployment Guide</a>
                     <a href="{{ url_for('main.userguide') }}">User Guide</a>
                     <a href="{{ url_for('main.view_doc', filename='LIST_OF_APP_AVAILABLE.md') }}">Available Applications</a>
+                    <a href="{{ url_for('main.view_doc', filename='SERVERLESS.md') }}">Serverless</a>
                     <a href="{{ url_for('auth.logout') }}" class="nav-logout">{{ get_text('logout') }}</a>
                 {% else %}
                     <a href="{{ url_for('main.view_doc', filename='ARCHITECTURE_GUIDE.md') }}">Architecture Guide</a>
                     <a href="{{ url_for('main.view_doc', filename='DEPLOYMENT_GUIDE.md') }}">Deployment Guide</a>
                     <a href="{{ url_for('main.userguide') }}">User Guide</a>
                     <a href="{{ url_for('main.view_doc', filename='LIST_OF_APP_AVAILABLE.md') }}">Available Applications</a>
+                    <a href="{{ url_for('main.view_doc', filename='SERVERLESS.md') }}">Serverless</a>
                     <a href="{{ url_for('main.index') }}">{{ get_text('login') }}</a>
                 {% endif %}
                 <div class="lang-toggle">
-                    <button id="layoutToggleMobile" class="btn-icon" onclick="toggleLayout()" title="Toggle Layout">
-                        📱
+                    <button id="layoutToggleMobile" class="btn-icon" onclick="toggleLayout()" title="Switch to Horizontal Layout">
+                        🖥️
                     </button>
                     <a href="{{ url_for('main.set_language', language='en') }}" class="lang-btn {% if current_lang == 'en' %}active{% endif %}">EN</a>
                     <a href="{{ url_for('main.set_language', language='fr') }}" class="lang-btn {% if current_lang == 'fr' %}active{% endif %}">FR</a>
@@ -182,6 +196,15 @@
             } else if (activeTab === 'security') {
                 const navSecurity = document.getElementById('navSecurity');
                 if (navSecurity) navSecurity.classList.add('nav-active');
+            } else if (activeTab === 'orchestratorServerless') {
+                const navOrchestratorServerless = document.getElementById('navOrchestratorServerless');
+                if (navOrchestratorServerless) navOrchestratorServerless.classList.add('nav-active');
+            } else if (activeTab === 'marketplace') {
+                const navMarketplace = document.getElementById('navMarketplace');
+                if (navMarketplace) navMarketplace.classList.add('nav-active');
+            } else if (activeTab === 'sandbox') {
+                const navSandbox = document.getElementById('navSandbox');
+                if (navSandbox) navSandbox.classList.add('nav-active');
             }
         }
         

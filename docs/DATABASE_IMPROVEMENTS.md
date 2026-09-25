@@ -44,7 +44,7 @@ The platform includes automated migration logic for seamlessly transitioning fro
 1. **Via Database CLI** (Recommended):
 ```bash
 # Using the sf_cli tool
-python3 ./scripts/cloudstore_cli.py migrate-to-postgres
+python3 ./scripts/aipoweredstore_cli.py migrate-to-postgres
 ```
 
 2. **Via API** (Admin only):
@@ -123,6 +123,14 @@ CREATE TABLE user_applications (
     https_port INTEGER,
     http_port2 INTEGER,
     https_port2 INTEGER,
+    http_port3 INTEGER,
+    https_port3 INTEGER,
+    http_port4 INTEGER,
+    https_port4 INTEGER,
+    http_port5 INTEGER,
+    https_port5 INTEGER,
+    http_port6 INTEGER,
+    https_port6 INTEGER,
     others_port INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
@@ -453,7 +461,7 @@ CREATE TRIGGER update_application_costs_updated_at BEFORE UPDATE ON application_
 #### 📊 Enhanced Cost Calculation Logic
 ```python
 def calculate_app_ports(user_id, app_id):
-    """Calculate HTTP and HTTPS ports using deployControlPlan.sh logic with validation"""
+    """Calculate 12 ports (6 HTTP + 6 HTTPS) using deployControlPlan.sh logic with validation"""
     # Load configuration from deploy.ini
     config = load_deploy_config()
     RANGE_START, RANGE_RESERVED, RANGE_PORTS_PER_APPLICATION = config
@@ -469,12 +477,22 @@ def calculate_app_ports(user_id, app_id):
     HTTPS_PORT = HTTP_PORT + 1
     HTTP_PORT2 = HTTPS_PORT + 1
     HTTPS_PORT2 = HTTP_PORT2 + 1
+    HTTP_PORT3 = HTTPS_PORT2 + 1
+    HTTPS_PORT3 = HTTP_PORT3 + 1
+    HTTP_PORT4 = HTTPS_PORT3 + 1
+    HTTPS_PORT4 = HTTP_PORT4 + 1
+    HTTP_PORT5 = HTTPS_PORT4 + 1
+    HTTPS_PORT5 = HTTP_PORT5 + 1
+    HTTP_PORT6 = HTTPS_PORT5 + 1
+    HTTPS_PORT6 = HTTP_PORT6 + 1
     
     # Validate port ranges
-    if HTTP_PORT > 65535 or HTTPS_PORT2 > 65535:
+    if HTTP_PORT > 65535 or HTTPS_PORT6 > 65535:
         raise ValueError("Port allocation exceeds valid range")
     
-    return HTTP_PORT, HTTPS_PORT, HTTP_PORT2, HTTPS_PORT2
+    return (HTTP_PORT, HTTPS_PORT, HTTP_PORT2, HTTPS_PORT2,
+            HTTP_PORT3, HTTPS_PORT3, HTTP_PORT4, HTTPS_PORT4,
+            HTTP_PORT5, HTTPS_PORT5, HTTP_PORT6, HTTPS_PORT6)
 ```
 
 #### 💳 Enhanced Billing Activity Recording

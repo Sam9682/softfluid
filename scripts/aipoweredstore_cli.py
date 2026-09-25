@@ -764,17 +764,57 @@ def install_as_systemctl_service():
     """Install SWAutomorph as systemd service"""
     import shutil
     
-    service_file = os.path.join(os.path.dirname(__file__), 'swautomorph-controlplan.service')
+    # Load PLTF_FOLDER from deploy.ini
+    pltf_folder = 'softfluid-ai-powered-store'
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'conf', 'deploy.ini')
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                for line in f:
+                    if line.strip().startswith('PLTF_FOLDER'):
+                        pltf_folder = line.split('=', 1)[1].strip().strip("'\"")
+                        break
+        except Exception:
+            pass
+    
+    # Load LINUX_USER_INSTALLATION from deploy.ini
+    linux_user = 'softfluid'
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                for line in f:
+                    if line.strip().startswith('LINUX_USER_INSTALLATION'):
+                        value = line.split('=', 1)[1].strip().strip("'\"")
+                        if value:
+                            linux_user = value
+                        break
+        except Exception:
+            pass
+    
+    base_path = f'/home/{linux_user}/{pltf_folder}'
     systemd_path = '/etc/systemd/system/swautomorph-controlplan.service'
     
-    if not os.path.exists(service_file):
-        click.echo(f'✗ Service file not found: {service_file}')
-        sys.exit(1)
+    # Generate service file content with correct paths
+    service_content = f"""[Unit]
+Description=SWAutomorph Control Plan
+After=network.target
+
+[Service]
+Type=forking
+ExecStart={base_path}/scripts/start_swautomorph_controlplan.sh
+ExecStop={base_path}/scripts/stop_swautomorph_controlplan.sh
+WorkingDirectory={base_path}
+User={linux_user}
+
+[Install]
+WantedBy=multi-user.target
+"""
     
     try:
         click.echo('Installing systemd service...')
-        shutil.copy(service_file, systemd_path)
-        click.echo(f'✓ Copied service file to {systemd_path}')
+        with open(systemd_path, 'w') as f:
+            f.write(service_content)
+        click.echo(f'✓ Generated service file at {systemd_path} (using PLTF_FOLDER={pltf_folder})')
         
         subprocess.run(['systemctl', 'daemon-reload'], check=True)
         click.echo('✓ Reloaded systemd daemon')
@@ -792,11 +832,188 @@ def install_as_systemctl_service():
         sys.exit(1)
     except PermissionError:
         click.echo('✗ Permission denied. Run with sudo:')
-        click.echo('  sudo python3 ./scripts/cloudstore_cli.py install-as-systemctl-service')
+        click.echo('  sudo python3 ./scripts/aipoweredstore_cli.py install-as-systemctl-service')
         sys.exit(1)
     except Exception as e:
         click.echo(f'✗ Error: {str(e)}')
         sys.exit(1)
+
+# ----------------------------------------------------------------------------
+# Onboarding Experience: sandbox + templates subcommands (Req 1.1, 2.1, 2.2,
+# 9.1, 9.3). Every surface deploys through the same shared components:
+#   - SandboxManager (src/sandbox_manager.py) for provision/reset/teardown
+#   - TemplateCatalog (src/template_catalog.py) as the single source of truth
+#   - TemplateDeployService (src/template_deploy.py) for template deploys
+# ----------------------------------------------------------------------------
+
+@cli.group()
+def sandbox():
+    """Manage the demo sandbox environment (provision/reset/teardown)."""
+    pass
+
+
+@sandbox.command(name='provision')
+def sandbox_provision():
+    """Provision the demo sandbox (Demo_User + seeded sample applications)."""
+    try:
+        from src.orchestrator import orchestrator
+        from src.sandbox_manager import SandboxManager
+
+        manager = SandboxManager(orchestrator=orchestrator)
+        report = manager.provision()
+
+        if report.success:
+            click.echo('✅ Sandbox provisioned successfully!')
+            if report.message:
+                click.echo(report.message)
+
+            creds = report.credentials or {}
+            click.echo('\nDemo_User credentials:')
+            click.echo(f"  Username: {creds.get('username')}")
+            click.echo(f"  Password: {creds.get('password')}")
+            if creds.get('user_id') is not None:
+                click.echo(f"  User ID:  {creds.get('user_id')}")
+
+            click.echo('\nSeeded applications:')
+            for app in report.apps:
+                click.echo(
+                    f"  - {app.get('application_name')} "
+                    f"[{app.get('status')}]: {app.get('access_url')}"
+                )
+        else:
+            click.echo(f"❌ {report.message or 'Sandbox provisioning failed.'}")
+            if report.failed:
+                click.echo('Failed applications:')
+                for item in report.failed:
+                    label = item.get('application_name') or item.get('template_id') or item.get('reason')
+                    detail = item.get('message')
+                    click.echo(f"  - {label}" + (f": {detail}" if detail else ''))
+            sys.exit(1)
+    except Exception as e:
+        click.echo(f'Error: {str(e)}')
+        sys.exit(1)
+
+
+@sandbox.command(name='reset')
+def sandbox_reset():
+    """Reset the sandbox: remove existing sample apps and re-seed the baseline."""
+    try:
+        from src.orchestrator import orchestrator
+        from src.sandbox_manager import SandboxManager
+
+        manager = SandboxManager(orchestrator=orchestrator)
+        report = manager.reset()
+
+        click.echo(report.message or ('Sandbox reset.' if report.success else 'Sandbox reset failed.'))
+        if report.failed:
+            click.echo('Failures:')
+            for item in report.failed:
+                label = item.get('application_name') or item.get('template_id')
+                detail = item.get('message')
+                click.echo(f"  - {label}" + (f": {detail}" if detail else ''))
+        if not report.success:
+            sys.exit(1)
+    except Exception as e:
+        click.echo(f'Error: {str(e)}')
+        sys.exit(1)
+
+
+@sandbox.command(name='teardown')
+def sandbox_teardown():
+    """Tear down the sandbox: stop and remove all demo resources."""
+    try:
+        from src.orchestrator import orchestrator
+        from src.sandbox_manager import SandboxManager
+
+        manager = SandboxManager(orchestrator=orchestrator)
+        report = manager.teardown()
+
+        click.echo(report.message or ('Sandbox torn down.' if report.success else 'Sandbox teardown failed.'))
+        if report.failed:
+            click.echo('Failures:')
+            for item in report.failed:
+                label = item.get('application_name') or item.get('template_id')
+                detail = item.get('message')
+                click.echo(f"  - {label}" + (f": {detail}" if detail else ''))
+        if not report.success:
+            sys.exit(1)
+    except Exception as e:
+        click.echo(f'Error: {str(e)}')
+        sys.exit(1)
+
+
+@cli.group()
+def templates():
+    """Deploy templates from the marketplace catalog (list/deploy)."""
+    pass
+
+
+@templates.command(name='list')
+def templates_list():
+    """List the available Deploy_Templates (identifier + application type)."""
+    try:
+        from src.template_catalog import TemplateCatalog
+
+        catalog = TemplateCatalog().load()
+        entries = catalog.list()
+
+        if not entries:
+            click.echo('No valid templates are available.')
+            return
+
+        click.echo('\nAvailable Templates:')
+        click.echo('='*60)
+        click.echo(f"{'Identifier':<30} {'App Type':<20}")
+        click.echo('-'*60)
+        for entry in entries:
+            click.echo(f"{str(entry.get('identifier')):<30} {str(entry.get('app_type')):<20}")
+        click.echo('='*60)
+    except Exception as e:
+        click.echo(f'Error: {str(e)}')
+        sys.exit(1)
+
+
+@templates.command(name='deploy')
+@click.argument('template_id')
+@click.argument('app_name')
+@click.option('--user-id', 'user_id', type=int, required=True, help='Owner user id for the deployment')
+def templates_deploy(template_id, app_name, user_id):
+    """Deploy TEMPLATE_ID as APP_NAME for the given user (Req 9.1, 9.3)."""
+    try:
+        from src.orchestrator import orchestrator
+        from src.template_catalog import TemplateCatalog
+        from src.template_deploy import TemplateDeployService
+
+        catalog = TemplateCatalog().load()
+
+        # Unknown template_id: list the available identifiers and deploy NOTHING
+        # (Req 9.3). Checked up front so the orchestrator is never invoked.
+        if catalog.get(template_id) is None:
+            click.echo(f"❌ Error: template '{template_id}' not found.")
+            available = [entry.get('identifier') for entry in catalog.list()]
+            if available:
+                click.echo('Available template identifiers:')
+                for identifier in available:
+                    click.echo(f"  - {identifier}")
+            else:
+                click.echo('No valid templates are available.')
+            sys.exit(1)
+
+        service = TemplateDeployService(catalog, orchestrator)
+        result = service.deploy(template_id, app_name, user_id)
+
+        if result.success:
+            click.echo('✅ Deployment initiated successfully!')
+            click.echo(f"  Deployment identifier: {result.application_id}")
+            if result.access_url:
+                click.echo(f"  Access URL: {result.access_url}")
+        else:
+            click.echo(f"❌ Error: {result.message or 'deployment failed'}")
+            sys.exit(1)
+    except Exception as e:
+        click.echo(f'Error: {str(e)}')
+        sys.exit(1)
+
 
 if __name__ == '__main__':
     cli()

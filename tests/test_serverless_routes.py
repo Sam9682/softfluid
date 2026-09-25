@@ -51,7 +51,7 @@ class TestSubmitJobAuth:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo", "hi"]}),
+            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo", "hi"], "target_link": "http://softfluid.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -179,7 +179,7 @@ class TestSubmitJobTimeoutValidation:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "timeout": 1}),
+            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "timeout": 1, "target_link": "http://softfluid.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -192,7 +192,7 @@ class TestSubmitJobTimeoutValidation:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "timeout": 3600}),
+            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "timeout": 3600, "target_link": "http://softfluid.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -206,7 +206,7 @@ class TestSubmitJobRegistryWhitelist:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "evil-registry.com/malware:latest", "command": ["echo"]}),
+            data=json.dumps({"image": "evil-registry.com/malware:latest", "command": ["echo"], "target_link": "http://softfluid.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 403
@@ -220,7 +220,7 @@ class TestSubmitJobRegistryWhitelist:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "python:3.11", "command": ["echo"]}),
+            data=json.dumps({"image": "python:3.11", "command": ["echo"], "target_link": "http://softfluid.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -233,7 +233,7 @@ class TestSubmitJobRegistryWhitelist:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "ghcr.io/org/myapp:latest", "command": ["run"]}),
+            data=json.dumps({"image": "ghcr.io/org/myapp:latest", "command": ["run"], "target_link": "http://softfluid.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -255,6 +255,7 @@ class TestSubmitJobSuccess:
                 "command": ["python", "script.py"],
                 "env": {"KEY": "value"},
                 "timeout": 600,
+                "target_link": "http://softfluid.com:6132",
             }),
             content_type='application/json',
         )
@@ -275,6 +276,7 @@ class TestSubmitJobSuccess:
                 "command": ["python", "main.py"],
                 "env": {"DB_HOST": "localhost"},
                 "timeout": 120,
+                "target_link": "http://softfluid.com:6134",
             }),
             content_type='application/json',
         )
@@ -291,6 +293,7 @@ class TestSubmitJobSuccess:
         assert json.loads(params[3]) == {"DB_HOST": "localhost"}  # env as JSON
         assert params[4] == 120  # timeout
         assert params[5] == "pending"  # status
+        assert params[6] == "http://softfluid.com:6134"  # target_link
 
     @patch('src.routes.serverless_routes.db_manager')
     def test_uses_default_env_when_not_provided(self, mock_db, client, app):
@@ -300,7 +303,7 @@ class TestSubmitJobSuccess:
             sess['user_id'] = 1
         client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/alpine:latest", "command": ["echo", "hi"]}),
+            data=json.dumps({"image": "docker.io/alpine:latest", "command": ["echo", "hi"], "target_link": "http://softfluid.com:6132"}),
             content_type='application/json',
         )
         call_args = mock_db.execute_query.call_args
@@ -315,7 +318,7 @@ class TestSubmitJobSuccess:
             sess['user_id'] = 1
         client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/alpine:latest", "command": ["echo"]}),
+            data=json.dumps({"image": "docker.io/alpine:latest", "command": ["echo"], "target_link": "http://softfluid.com:6132"}),
             content_type='application/json',
         )
         call_args = mock_db.execute_query.call_args
@@ -329,7 +332,7 @@ class TestSubmitJobSuccess:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"]}),
+            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "target_link": "http://softfluid.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 500
@@ -362,8 +365,9 @@ class TestGetJobStatusNotFound:
 class TestGetJobStatusOwnership:
     """Test ownership and admin access for GET /api/jobs/<job_id>."""
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_403_when_not_owner_and_not_admin(self, mock_db, client, app):
+    def test_returns_403_when_not_owner_and_not_admin(self, mock_db, mock_sync, client, app):
         from datetime import datetime
         mock_db.execute_query.return_value = (
             '550e8400-e29b-41d4-a716-446655440000',  # id
@@ -375,6 +379,7 @@ class TestGetJobStatusOwnership:
             None,  # completed_at
             None,  # exit_code
             'worker-001',  # worker_id
+            'http://softfluid.com:6132',  # target_link
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 1
@@ -384,8 +389,9 @@ class TestGetJobStatusOwnership:
         data = response.get_json()
         assert data["error"] == "Access denied"
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_200_when_user_is_owner(self, mock_db, client, app):
+    def test_returns_200_when_user_is_owner(self, mock_db, mock_sync, client, app):
         from datetime import datetime
         mock_db.execute_query.return_value = (
             '550e8400-e29b-41d4-a716-446655440000',
@@ -397,14 +403,16 @@ class TestGetJobStatusOwnership:
             None,
             None,
             'worker-001',
+            'http://softfluid.com:6132',
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 42
         response = client.get('/api/jobs/550e8400-e29b-41d4-a716-446655440000')
         assert response.status_code == 200
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_200_when_user_is_admin(self, mock_db, client, app):
+    def test_returns_200_when_user_is_admin(self, mock_db, mock_sync, client, app):
         from datetime import datetime
         mock_db.execute_query.return_value = (
             '550e8400-e29b-41d4-a716-446655440000',
@@ -416,6 +424,7 @@ class TestGetJobStatusOwnership:
             datetime(2024, 1, 15, 10, 31, 0),
             0,
             'worker-001',
+            'http://softfluid.com:6132',
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 1
@@ -427,8 +436,9 @@ class TestGetJobStatusOwnership:
 class TestGetJobStatusResponse:
     """Test response format for GET /api/jobs/<job_id>."""
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_full_job_metadata(self, mock_db, client, app):
+    def test_returns_full_job_metadata(self, mock_db, mock_sync, client, app):
         from datetime import datetime
         mock_db.execute_query.return_value = (
             '550e8400-e29b-41d4-a716-446655440000',
@@ -440,6 +450,7 @@ class TestGetJobStatusResponse:
             None,
             None,
             'worker-001',
+            'http://softfluid.com:6132',
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 42
@@ -455,8 +466,9 @@ class TestGetJobStatusResponse:
         assert data["exit_code"] is None
         assert data["worker_id"] == "worker-001"
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_completed_job_with_exit_code(self, mock_db, client, app):
+    def test_returns_completed_job_with_exit_code(self, mock_db, mock_sync, client, app):
         from datetime import datetime
         mock_db.execute_query.return_value = (
             '550e8400-e29b-41d4-a716-446655440000',
@@ -468,6 +480,7 @@ class TestGetJobStatusResponse:
             datetime(2024, 1, 15, 10, 31, 0),
             0,
             'worker-001',
+            'http://softfluid.com:6132',
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 42
@@ -514,13 +527,15 @@ class TestGetJobResultNotFound:
 class TestGetJobResultOwnership:
     """Test ownership and admin access for GET /api/jobs/<job_id>/result."""
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_403_when_not_owner_and_not_admin(self, mock_db, client, app):
+    def test_returns_403_when_not_owner_and_not_admin(self, mock_db, mock_sync, client, app):
         mock_db.execute_query.return_value = (
             '550e8400-e29b-41d4-a716-446655440000',  # id
             99,  # user_id (different from session user)
             'completed',  # status
             0,  # exit_code
+            'http://softfluid.com:6132',  # target_link
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 1
@@ -530,8 +545,9 @@ class TestGetJobResultOwnership:
         data = response.get_json()
         assert data["error"] == "Access denied"
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_200_when_user_is_admin(self, mock_db, client, app):
+    def test_returns_200_when_user_is_admin(self, mock_db, mock_sync, client, app):
         # First call: job query, second call: logs, third call: result
         mock_db.execute_query.side_effect = [
             (
@@ -539,6 +555,7 @@ class TestGetJobResultOwnership:
                 99,  # user_id (different from session user)
                 'completed',  # status
                 0,  # exit_code
+                'http://softfluid.com:6132',  # target_link
             ),
             [],  # logs
             None,  # result
@@ -553,13 +570,15 @@ class TestGetJobResultOwnership:
 class TestGetJobResultTerminalState:
     """Test 409 when job is not in terminal state."""
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_409_when_job_is_pending(self, mock_db, client, app):
+    def test_returns_409_when_job_is_pending(self, mock_db, mock_sync, client, app):
         mock_db.execute_query.return_value = (
             '550e8400-e29b-41d4-a716-446655440000',
             42,
             'pending',  # not terminal
             None,
+            None,  # target_link (None so sync returns None)
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 42
@@ -568,13 +587,15 @@ class TestGetJobResultTerminalState:
         data = response.get_json()
         assert data["error"] == "Job is still in progress"
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_409_when_job_is_running(self, mock_db, client, app):
+    def test_returns_409_when_job_is_running(self, mock_db, mock_sync, client, app):
         mock_db.execute_query.return_value = (
             '550e8400-e29b-41d4-a716-446655440000',
             42,
             'running',  # not terminal
             None,
+            None,  # target_link (None so sync returns None)
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 42
@@ -587,8 +608,9 @@ class TestGetJobResultTerminalState:
 class TestGetJobResultResponse:
     """Test response format for GET /api/jobs/<job_id>/result."""
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_full_result_with_logs(self, mock_db, client, app):
+    def test_returns_full_result_with_logs(self, mock_db, mock_sync, client, app):
         mock_db.execute_query.side_effect = [
             # First call: job query
             (
@@ -596,6 +618,7 @@ class TestGetJobResultResponse:
                 42,
                 'completed',
                 0,
+                'http://softfluid.com:6132',
             ),
             # Second call: logs query
             [
@@ -616,8 +639,9 @@ class TestGetJobResultResponse:
         assert data["stderr"] == "warning: something\n"
         assert data["result"] == {"key": "structured_output"}
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_result_with_no_logs(self, mock_db, client, app):
+    def test_returns_result_with_no_logs(self, mock_db, mock_sync, client, app):
         mock_db.execute_query.side_effect = [
             # First call: job query
             (
@@ -625,6 +649,7 @@ class TestGetJobResultResponse:
                 42,
                 'failed',
                 1,
+                'http://softfluid.com:6132',
             ),
             # Second call: logs query (empty)
             [],
@@ -641,14 +666,16 @@ class TestGetJobResultResponse:
         assert data["stderr"] == ""
         assert data["result"] is None
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_result_for_timeout_status(self, mock_db, client, app):
+    def test_returns_result_for_timeout_status(self, mock_db, mock_sync, client, app):
         mock_db.execute_query.side_effect = [
             (
                 '550e8400-e29b-41d4-a716-446655440000',
                 42,
                 'timeout',
                 137,
+                'http://softfluid.com:6132',
             ),
             [('stderr', 'Process killed due to timeout\n')],
             None,
@@ -663,14 +690,16 @@ class TestGetJobResultResponse:
         assert data["stderr"] == "Process killed due to timeout\n"
         assert data["result"] is None
 
+    @patch('src.routes.serverless_routes.sync_job_from_remote', return_value=None)
     @patch('src.routes.serverless_routes.db_manager')
-    def test_returns_result_for_cancelled_status(self, mock_db, client, app):
+    def test_returns_result_for_cancelled_status(self, mock_db, mock_sync, client, app):
         mock_db.execute_query.side_effect = [
             (
                 '550e8400-e29b-41d4-a716-446655440000',
                 42,
                 'cancelled',
                 None,
+                'http://softfluid.com:6132',
             ),
             [],
             None,
@@ -887,3 +916,346 @@ class TestCancelJobSuccess:
             sess['user_id'] = 42
         response = client.post('/api/jobs/550e8400-e29b-41d4-a716-446655440000/cancel')
         assert response.status_code == 500
+
+
+class TestListJobsAuth:
+    """Test authentication for GET /api/jobs."""
+
+    def test_returns_401_when_not_authenticated(self, client):
+        response = client.get('/api/jobs')
+        assert response.status_code == 401
+        data = response.get_json()
+        assert "error" in data
+
+
+class TestListJobsPagination:
+    """Test pagination for GET /api/jobs."""
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_returns_default_pagination(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (0,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["page"] == 1
+        assert data["per_page"] == 20
+        assert data["total"] == 0
+        assert data["pages"] == 0
+        assert data["jobs"] == []
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_respects_page_parameter(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (50,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs?page=3')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["page"] == 3
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_respects_per_page_parameter(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (50,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs?per_page=10')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["per_page"] == 10
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_clamps_per_page_to_max_100(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (0,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs?per_page=200')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["per_page"] == 100
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_calculates_pages_correctly(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (45,),  # count query: 45 total
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs?per_page=10')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["pages"] == 5  # ceil(45/10) = 5
+        assert data["total"] == 45
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_handles_invalid_page_value(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (0,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs?page=abc')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["page"] == 1
+
+
+class TestListJobsStatusFilter:
+    """Test status filter for GET /api/jobs."""
+
+    def test_returns_400_for_invalid_status(self, client, app):
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs?status=invalid')
+        assert response.status_code == 400
+        data = response.get_json()
+        assert "Invalid status filter" in data["error"]
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_accepts_valid_status_pending(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (0,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs?status=pending')
+        assert response.status_code == 200
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_accepts_valid_status_running(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (0,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs?status=running')
+        assert response.status_code == 200
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_filters_by_status_in_query(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (2,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        client.get('/api/jobs?status=completed')
+        # Check that the count query includes status filter
+        count_call = mock_db.execute_query.call_args_list[0]
+        query = count_call[0][0]
+        params = count_call[0][1]
+        assert "status = %s" in query
+        assert 'completed' in params
+
+
+class TestListJobsAdminAccess:
+    """Test admin access for GET /api/jobs."""
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_non_admin_sees_only_own_jobs(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (1,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 42
+            sess['is_admin'] = False
+        client.get('/api/jobs')
+        # Check count query includes user_id filter
+        count_call = mock_db.execute_query.call_args_list[0]
+        query = count_call[0][0]
+        params = count_call[0][1]
+        assert "user_id = %s" in query
+        assert 42 in params
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_admin_sees_all_jobs(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (10,),  # count query
+            [],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+            sess['is_admin'] = True
+        client.get('/api/jobs')
+        # Check count query does NOT include user_id filter
+        count_call = mock_db.execute_query.call_args_list[0]
+        query = count_call[0][0]
+        assert "user_id = %s" not in query
+
+
+class TestListJobsResponse:
+    """Test response format for GET /api/jobs."""
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_returns_jobs_with_correct_format(self, mock_db, client, app):
+        from datetime import datetime
+        mock_db.execute_query.side_effect = [
+            (1,),  # count query
+            [
+                (
+                    '550e8400-e29b-41d4-a716-446655440000',
+                    42,
+                    'docker.io/python:3.11',
+                    'running',
+                    datetime(2024, 1, 15, 10, 30, 0),
+                    datetime(2024, 1, 15, 10, 30, 1),
+                    None,
+                    None,
+                    'worker-001',
+                    'http://softfluid.com:6132',
+                ),
+            ],  # jobs query
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 42
+        response = client.get('/api/jobs')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert len(data["jobs"]) == 1
+        job = data["jobs"][0]
+        assert job["job_id"] == "550e8400-e29b-41d4-a716-446655440000"
+        assert job["user_id"] == 42
+        assert job["image"] == "docker.io/python:3.11"
+        assert job["status"] == "running"
+        assert job["created_at"] == "2024-01-15T10:30:00Z"
+        assert job["started_at"] == "2024-01-15T10:30:01Z"
+        assert job["completed_at"] is None
+        assert job["exit_code"] is None
+        assert job["worker_id"] == "worker-001"
+        assert job["target_link"] == "http://softfluid.com:6132"
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_returns_500_on_db_failure(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = Exception("Connection refused")
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs')
+        assert response.status_code == 500
+
+
+class TestGetMetricsAuth:
+    """Test authentication and authorization for GET /api/jobs/metrics."""
+
+    def test_returns_401_when_not_authenticated(self, client):
+        response = client.get('/api/jobs/metrics')
+        assert response.status_code == 401
+        data = response.get_json()
+        assert "error" in data
+
+    def test_returns_403_when_not_admin(self, client, app):
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+            sess['is_admin'] = False
+        response = client.get('/api/jobs/metrics')
+        assert response.status_code == 403
+        data = response.get_json()
+        assert "Admin access required" in data["error"]
+
+    def test_returns_403_when_is_admin_not_set(self, client, app):
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+        response = client.get('/api/jobs/metrics')
+        assert response.status_code == 403
+
+
+class TestGetMetricsResponse:
+    """Test response format and data for GET /api/jobs/metrics."""
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_returns_metrics_for_admin(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (5, 3, 2),  # counts: pending=5, running=3, failed=2
+            (45.67,),   # avg execution time
+            (1.23,),    # avg startup duration
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+            sess['is_admin'] = True
+        response = client.get('/api/jobs/metrics')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["pending_count"] == 5
+        assert data["running_count"] == 3
+        assert data["failed_count"] == 2
+        assert data["avg_execution_time"] == 45.67
+        assert data["queue_depth"] == 5  # same as pending_count
+        assert data["avg_startup_duration"] == 1.23
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_returns_null_avg_execution_time_when_no_completed_jobs(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (2, 1, 0),  # counts
+            (None,),    # avg execution time: no completed jobs
+            (0.5,),     # avg startup duration
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+            sess['is_admin'] = True
+        response = client.get('/api/jobs/metrics')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["avg_execution_time"] is None
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_returns_null_avg_startup_duration_when_no_started_jobs(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (3, 0, 0),  # counts
+            (None,),    # avg execution time
+            (None,),    # avg startup duration: no started jobs
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+            sess['is_admin'] = True
+        response = client.get('/api/jobs/metrics')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["avg_startup_duration"] is None
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_returns_zero_counts_when_no_jobs(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = [
+            (0, 0, 0),  # counts: all zero
+            (None,),    # avg execution time
+            (None,),    # avg startup duration
+        ]
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+            sess['is_admin'] = True
+        response = client.get('/api/jobs/metrics')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["pending_count"] == 0
+        assert data["running_count"] == 0
+        assert data["failed_count"] == 0
+        assert data["queue_depth"] == 0
+        assert data["avg_execution_time"] is None
+        assert data["avg_startup_duration"] is None
+
+    @patch('src.routes.serverless_routes.db_manager')
+    def test_returns_500_on_db_failure(self, mock_db, client, app):
+        mock_db.execute_query.side_effect = Exception("Connection refused")
+        with client.session_transaction() as sess:
+            sess['user_id'] = 1
+            sess['is_admin'] = True
+        response = client.get('/api/jobs/metrics')
+        assert response.status_code == 500
+        data = response.get_json()
+        assert "error" in data

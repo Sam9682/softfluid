@@ -51,40 +51,40 @@ Implementation of the Serverless Docker Execution Service feature for the OPCP C
   - [x] 5.3 Implement `GET /api/jobs/<job_id>` endpoint: validate auth, check ownership (owner or admin), return job status and metadata, 404 for non-existent jobs
   - [x] 5.4 Implement `GET /api/jobs/<job_id>/result` endpoint: validate auth, check ownership, verify job is in terminal state (409 if not), return exit_code, stdout, stderr from job_logs, and result from job_results
   - [-] 5.5 Implement `POST /api/jobs/<job_id>/cancel` endpoint: validate auth, check ownership, verify job is in cancellable state (pending/running), update status to cancelled, return 409 for terminal-state jobs
-  - [~] 5.6 Implement `GET /api/jobs` endpoint: validate auth, return paginated list of user's jobs (admin sees all), support `?status=` filter and `?page=`/`?per_page=` pagination
-  - [~] 5.7 Implement `GET /api/jobs/metrics` endpoint: admin-only, return counts of pending/running/failed jobs, average execution time, queue depth, and average container startup duration
+  - [x] 5.6 Implement `GET /api/jobs` endpoint: validate auth, return paginated list of user's jobs (admin sees all), support `?status=` filter and `?page=`/`?per_page=` pagination
+  - [x] 5.7 Implement `GET /api/jobs/metrics` endpoint: admin-only, return counts of pending/running/failed jobs, average execution time, queue depth, and average container startup duration
 
-- [ ] 6. Flask App Integration {depends_on: [5]}
-  - [~] 6.1 Register `serverless_bp` in `src/ControlPlanFlaskApp_postgres.py` by adding the import and `app.register_blueprint(serverless_bp)` call
+- [x] 6. Flask App Integration {depends_on: [5]}
+  - [x] 6.1 Register `serverless_bp` in `src/ControlPlanFlaskApp_postgres.py` by adding the import and `app.register_blueprint(serverless_bp)` call
 
-- [ ] 7. Dashboard UI - Menu and Section {depends_on: [6]}
-  - [~] 7.1 Add "Application Orchestrator" as a new top-level navigation item in `templates/base.html` (with 🚀 icon), wired to show `orchestratorServerlessSection`
-  - [~] 7.2 Add `orchestratorServerlessSection` div in `templates/dashboard.html` with: job list table (columns: ID, image, status, created_at, actions), job submission form (fields: image, command, env as JSON, timeout), job detail/result view panel, and metrics summary panel
-  - [~] 7.3 Add CSS styles for job status badges (color-coded: pending=gray, running=blue, completed=green, failed=red, timeout=orange, cancelled=yellow)
+- [x] 7. Dashboard UI - Menu and Section {depends_on: [6]}
+  - [x] 7.1 Add "Application Orchestrator" as a new top-level navigation item in `templates/base.html` (with 🚀 icon), wired to show `orchestratorServerlessSection`
+  - [x] 7.2 Add `orchestratorServerlessSection` div in `templates/dashboard.html` with: job list table (columns: ID, image, status, created_at, actions), job submission form (fields: image, command, env as JSON, timeout), job detail/result view panel, and metrics summary panel
+  - [x] 7.3 Add CSS styles for job status badges (color-coded: pending=gray, running=blue, completed=green, failed=red, timeout=orange, cancelled=yellow)
 
-- [ ] 8. Dashboard UI - JavaScript Functions {depends_on: [7]}
-  - [~] 8.1 Add `submitServerlessJob()` function in `templates/dashboard_functions.js` that POSTs to `/api/jobs` and refreshes the job list
-  - [~] 8.2 Add `refreshJobList()` function that GETs `/api/jobs` and renders the job table with status badges
-  - [~] 8.3 Add `viewJobDetail(jobId)` function that GETs `/api/jobs/{id}` and `/api/jobs/{id}/result` and displays in the detail panel
-  - [~] 8.4 Add `cancelJob(jobId)` function that POSTs to `/api/jobs/{id}/cancel` with confirmation dialog
-  - [~] 8.5 Add `loadServerlessMetrics()` function that GETs `/api/jobs/metrics` and renders the metrics panel
-  - [~] 8.6 Add auto-refresh timer (5 second interval) for the job list when the orchestrator section is visible
+- [x] 8. Dashboard UI - JavaScript Functions {depends_on: [7]}
+  - [x] 8.1 Add `submitServerlessJob()` function in `templates/dashboard_functions.js` that POSTs to `/api/jobs` and refreshes the job list
+  - [x] 8.2 Add `refreshJobList()` function that GETs `/api/jobs` and renders the job table with status badges
+  - [x] 8.3 Add `viewJobDetail(jobId)` function that GETs `/api/jobs/{id}` and `/api/jobs/{id}/result` and displays in the detail panel
+  - [x] 8.4 Add `cancelJob(jobId)` function that POSTs to `/api/jobs/{id}/cancel` with confirmation dialog
+  - [x] 8.5 Add `loadServerlessMetrics()` function that GETs `/api/jobs/metrics` and renders the metrics panel
+  - [x] 8.6 Add auto-refresh timer (5 second interval) for the job list when the orchestrator section is visible
 
-- [ ] 9. Systemd Service Configuration {depends_on: [4]}
-  - [~] 9.1 Create `systemd/serverless-worker.service` unit file with: Type=simple, WorkingDirectory pointing to the project root, ExecStart as `python3 -m src.serverless.worker`, Restart=always, RestartSec=5, Environment variables for WORKER_ID and PYTHONPATH, After=postgresql.service docker.service
-  - [~] 9.2 Create `scripts/install_worker_service.sh` script that copies the service file to `/etc/systemd/system/`, runs daemon-reload, and enables the service
+- [x] 9. Systemd Service Configuration {depends_on: [4]}
+  - [x] 9.1 Create `systemd/serverless-worker.service` unit file with: Type=simple, WorkingDirectory pointing to the project root, ExecStart as `python3 -m src.serverless.worker`, Restart=always, RestartSec=5, Environment variables for WORKER_ID and PYTHONPATH, After=postgresql.service docker.service
+  - [x] 9.2 Create `scripts/install_worker_service.sh` script that copies the service file to `/etc/systemd/system/`, runs daemon-reload, and enables the service
 
-- [ ] 10. Registry Whitelist Validation {depends_on: [2]}
-  - [~] 10.1 Implement `validate_image_registry(image, whitelist)` function in `src/serverless/config.py` that parses a Docker image reference to extract the registry hostname and validates it against the configured whitelist (handling default docker.io for images without explicit registry)
+- [x] 10. Registry Whitelist Validation {depends_on: [2]}
+  - [x] 10.1 Implement `validate_image_registry(image, whitelist)` function in `src/serverless/config.py` that parses a Docker image reference to extract the registry hostname and validates it against the configured whitelist (handling default docker.io for images without explicit registry)
 
-- [ ] 11. Monitoring and Logging Integration {depends_on: [4, 5]}
-  - [~] 11.1 Add structured logging to all serverless API endpoints in `serverless_routes.py` (using the same pattern as existing routes: FileHandler + ConsoleHandler to `logs/serverless_routes.log`)
-  - [~] 11.2 Add structured logging to the worker service with log rotation, logging job claim, execution start/end, and errors to `logs/serverless_worker.log`
+- [x] 11. Monitoring and Logging Integration {depends_on: [4, 5]}
+  - [x] 11.1 Add structured logging to all serverless API endpoints in `serverless_routes.py` (using the same pattern as existing routes: FileHandler + ConsoleHandler to `logs/serverless_routes.log`)
+  - [x] 11.2 Add structured logging to the worker service with log rotation, logging job claim, execution start/end, and errors to `logs/serverless_worker.log`
 
-- [ ] 12. Integration Testing Setup {depends_on: [4, 5]}
-  - [~] 12.1 Create `tests/test_serverless_routes.py` with tests for: job submission (valid/invalid), job status retrieval, job result retrieval, job cancellation, auth enforcement, registry whitelist rejection
-  - [~] 12.2 Create `tests/test_container_runtime.py` with tests for: runtime detection, Docker command construction with security flags, Podman command construction
-  - [~] 12.3 Create `tests/test_worker.py` with tests for: job claiming with FOR UPDATE SKIP LOCKED, job execution lifecycle, timeout handling, cancellation handling
+- [x] 12. Integration Testing Setup {depends_on: [4, 5]}
+  - [x] 12.1 Create `tests/test_serverless_routes.py` with tests for: job submission (valid/invalid), job status retrieval, job result retrieval, job cancellation, auth enforcement, registry whitelist rejection
+  - [x] 12.2 Create `tests/test_container_runtime.py` with tests for: runtime detection, Docker command construction with security flags, Podman command construction
+  - [x] 12.3 Create `tests/test_worker.py` with tests for: job claiming with FOR UPDATE SKIP LOCKED, job execution lifecycle, timeout handling, cancellation handling
 
 ## Notes
 

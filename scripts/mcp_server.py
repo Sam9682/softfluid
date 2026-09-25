@@ -11,6 +11,9 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.database_postgres import db_manager
+from src.template_catalog import TemplateCatalog
+from src.template_deploy import TemplateDeployService
+from src.orchestrator import orchestrator
 
 class MCPServer:
     def __init__(self, db_path: str = 'softfluid/db/ai_swautomorph.db'):
@@ -19,7 +22,8 @@ class MCPServer:
             'list_applications': self.list_applications,
             'add_application': self.add_application,
             'get_user_info': self.get_user_info,
-            'list_users': self.list_users
+            'list_users': self.list_users,
+            'deploy_template': self.deploy_template
         }
     
     async def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
@@ -57,6 +61,19 @@ class MCPServer:
                         'inputSchema': {
                             'type': 'object',
                             'properties': {}
+                        }
+                    },
+                    {
+                        'name': 'deploy_template',
+                        'description': 'Deploy an application from a Deploy Template blueprint',
+                        'inputSchema': {
+                            'type': 'object',
+                            'properties': {
+                                'template_id': {'type': 'string'},
+                                'application_name': {'type': 'string'},
+                                'user_id': {'type': 'integer'}
+                            },
+                            'required': ['template_id', 'application_name', 'user_id']
                         }
                     }
                 ]
@@ -142,6 +159,40 @@ class MCPServer:
             return users
         except Exception as e:
             return [{'error': f'Database error: {str(e)}'}]
+
+    async def deploy_template(self, template_id: str, application_name: str, user_id: int) -> Dict[str, Any]:
+        """Deploy an application from a Deploy Template blueprint (Req 9.2, 9.4).
+
+        Uses the shared TemplateDeployService so MCP deployments follow the exact
+        same path as the Dashboard, CLI, and REST API. On an unknown template id
+        the not-found error is returned up front and NO deployment is initiated
+        (Req 9.4).
+        """
+        try:
+            catalog = TemplateCatalog().load()
+
+            # Unknown template id -> report not found and initiate no deployment (Req 9.4).
+            if catalog.get(template_id) is None:
+                return {'error': 'template not found', 'template_id': template_id}
+
+            service = TemplateDeployService(catalog, orchestrator)
+            result = service.deploy(template_id, application_name, user_id)
+
+            if not result.success:
+                return {
+                    'error': result.message or 'deployment failed',
+                    'error_code': result.error_code,
+                    'template_id': template_id,
+                }
+
+            # Return the created deployment identifier (Req 9.2).
+            return {
+                'application_id': result.application_id,
+                'access_url': result.access_url,
+                'template_id': template_id,
+            }
+        except Exception as e:
+            return {'error': f'Deployment error: {str(e)}'}
 
 async def main():
     """Main MCP server loop"""

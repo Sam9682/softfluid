@@ -4,10 +4,15 @@ After=network.target
 
 [Service]
 Type=forking
-ExecStart=/home/ubuntu/ai-swautomorph/scripts/start_swautomorph_controlplan.sh
-ExecStop=/home/ubuntu/ai-swautomorph/scripts/stop_swautomorph_controlplan.sh
-WorkingDirectory=/home/ubuntu/ai-swautomorph
-User=ubuntu
+# GENERATED ARTIFACT - DO NOT rely on the literals below for a real install.
+# The authoritative unit is emitted by 'aipoweredstore_cli.py install-as-systemctl-service',
+# which substitutes User= and the /home/<user>/... paths from LINUX_USER_INSTALLATION in
+# conf/deploy.ini. The values below use the softfluid fallback default (matching that fallback) and
+# the default PLTF_FOLDER; regenerate to get the correct install user and paths from deploy.ini.
+ExecStart=/home/softfluid/softfluid-explorer/scripts/start_swautomorph_controlplan.sh
+ExecStop=/home/softfluid/softfluid-explorer/scripts/stop_swautomorph_controlplan.sh
+WorkingDirectory=/home/softfluid/softfluid-explorer
+User=softfluid
 
 [Install]
 WantedBy=multi-user.target

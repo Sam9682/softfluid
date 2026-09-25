@@ -57,6 +57,20 @@ def get_platform_name():
         logger.error(f'Failed to read PLTF_NAME from deploy.ini: {e}')
     return 'AI-SwAutoMorph'
 
+# Platform folder name from deploy.ini
+def get_platform_folder():
+    """Get platform folder name from deploy.ini"""
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, 'conf', 'deploy.ini')
+        with open(config_path, 'r') as f:
+            for line in f:
+                if line.strip().startswith('PLTF_FOLDER'):
+                    return line.split('=', 1)[1].strip().strip("'\"")
+    except Exception as e:
+        logger.error(f'Failed to read PLTF_FOLDER from deploy.ini: {e}')
+    return 'softfluid-ai-powered-store'
+
 # Domain name from deploy.ini
 def get_domain_name():
     """Get domain name from deploy.ini"""
@@ -87,9 +101,28 @@ def get_version():
     return '0.0.1'
 
 
+# Linux installation user from deploy.ini
+def get_linux_user():
+    """Get Linux installation user from deploy.ini"""
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, 'conf', 'deploy.ini')
+        with open(config_path, 'r') as f:
+            for line in f:
+                if line.strip().startswith('LINUX_USER_INSTALLATION'):
+                    value = line.split('=', 1)[1].strip().strip("'\"")
+                    if value:
+                        return value
+    except Exception as e:
+        logger.error(f'Failed to read LINUX_USER_INSTALLATION from deploy.ini: {e}')
+    return 'softfluid'
+
+
 PLTF_NAME = get_platform_name()
+PLTF_FOLDER = get_platform_folder()
 DOMAIN = get_domain_name()
 APP_VERSION = get_version()
+LINUX_USER_INSTALLATION = get_linux_user()
 
 # CORS configuration
 CORS_ORIGINS = [
@@ -144,7 +177,7 @@ def get_shai_paths():
     home_dir = os.path.expanduser('~')
     qchat_paths = [
         os.path.join(home_dir, '.local', 'bin', 'shai'),
-        '/home/ubuntu/.local/bin/shai',
+        f'/home/{LINUX_USER_INSTALLATION}/.local/bin/shai',
         '/usr/local/bin/shai',
         '/usr/bin/shai',
         'shai'
@@ -369,7 +402,7 @@ TRANSLATIONS = {
         'unlimited_scalability_desc': 'Handle multiple projects simultaneously',
         'always_learning': 'Always Learning',
         'always_learning_desc': 'AI agents improve with every interaction',
-        'disruption_warning': "The IT industry is being disrupted RIGHT NOW. Companies using AI agents are moving 10x faster than those still relying on human IT teams. Don't get left behind. !!! You can implement SoftFluid platform on your own environment !!!",
+        'disruption_warning': "The IT industry is being disrupted RIGHT NOW. Companies using AI agents are moving 10x faster than those still relying on human IT teams. Don't get left behind. !!! You can implement ai-powered-store platform on your own environment !!!",
         'configuration': 'Configuration',
         'user_management': 'User Management',
         'server_management': 'Server Management',
@@ -396,6 +429,7 @@ TRANSLATIONS = {
         'local_active_version': 'Local Active Version',
         'orchestrator': 'Applications Orchestrator',
         'confirm_password': 'Confirm password',
+        'username_hint': 'Letters (a-z, A-Z), digits (0-9) only. No spaces or special characters.',
         'password_match': '✓ password match',
         'password_do_not_match': '✗ password do not match',
         'account_pending_activation': 'Your account is pending activation. Please wait for the administration team to activate your account and try again later.',
@@ -435,7 +469,38 @@ TRANSLATIONS = {
         'enter_password': 'Enter your password',
         'two_factor_verification': 'Two-Factor Verification',
         'verification_code': 'Verification Code',
-        'verify': 'Verify'
+        'verify': 'Verify',
+        # Onboarding: Template Marketplace panel (Req 8.2-8.6)
+        'marketplace': 'Template Marketplace',
+        'marketplace_desc': 'Deploy a prebuilt application blueprint in one click.',
+        'refresh': 'Refresh',
+        'template': 'Template',
+        'app_type': 'Type',
+        'ports': 'Ports',
+        'resources': 'Resources',
+        'deploy': 'Deploy',
+        'loading_templates': 'Loading templates...',
+        'no_templates': 'No templates available.',
+        'enter_application_name': 'Enter an application name',
+        'deploying': 'Deploying...',
+        'deploy_success': 'Application deployed',
+        'deploy_failed': 'Deployment failed',
+        'authentication_required': 'Authentication is required. Please sign in.',
+        'access_url': 'Access URL',
+        # Onboarding: Sandbox / Demo Mode panel (Req 1.6, 2.1, 2.2, 3.3)
+        'sandbox': 'Sandbox / Demo Mode',
+        'sandbox_desc': 'Provision, reset, or tear down a demo environment seeded with sample applications.',
+        'sandbox_provision': 'Provision',
+        'sandbox_reset': 'Reset',
+        'sandbox_teardown': 'Teardown',
+        'sandbox_status': 'Status',
+        'sandbox_loading': 'Loading sandbox status...',
+        'sandbox_none': 'No sandbox environment is present.',
+        'sandbox_already_exists': 'A sandbox already exists. Run reset or teardown first.',
+        'sandbox_seed_failed': 'Sandbox seeding failed; no partial applications remain.',
+        'status_running': 'running',
+        'status_stopped': 'stopped',
+        'status_failed': 'failed'
     },
     'fr': {
         'login': 'Connexion',
@@ -640,7 +705,7 @@ TRANSLATIONS = {
         'unlimited_scalability_desc': 'Gérer plusieurs projets simultanément',
         'always_learning': 'Apprentissage Continu',
         'always_learning_desc': 'Les agents IA en auto amélioration à chaque interaction',
-        'disruption_warning': "Une industrie IT est en cours de disruption MAINTENANT. Les entreprises utilisant des agents IA avancent 10 fois plus vite que celles qui dépendent encore d'équipes IT humaines. Ne vous laissez pas distancer. !!! Vous pouvez implémenter SoftFluid dans votre environnement !!!",
+        'disruption_warning': "Une industrie IT est en cours de disruption MAINTENANT. Les entreprises utilisant des agents IA avancent 10 fois plus vite que celles qui dépendent encore d'équipes IT humaines. Ne vous laissez pas distancer. !!! Vous pouvez implémenter ai-powered-store dans votre environnement !!!",
         'configuration': 'Configuration',
         'user_management': 'Gestion des Utilisateurs',
         'server_management': 'Gestion des Serveurs',
@@ -667,6 +732,7 @@ TRANSLATIONS = {
         'local_active_version': 'Version Active Locale',
         'orchestrator': 'Applications Orchestrateur',
         'confirm_password': 'Confirmation du mot de passe',
+        'username_hint': 'Lettres (a-z, A-Z) et chiffres (0-9) uniquement. Pas d\'espaces ni de caractères spéciaux.',
         'password_match': '✓ le mot de passe correspond',
         'password_do_not_match': '✗ le mot de passe ne correspond pas',
         'account_pending_activation': "Votre compte est en attente d'activation. Veuillez attendre que l'équipe d'administration active votre compte et réessayez plus tard.",
@@ -706,6 +772,76 @@ TRANSLATIONS = {
         'enter_password': 'Entrez votre mot de passe',
         'two_factor_verification': 'Vérification à Deux Facteurs',
         'verification_code': 'Code de Vérification',
-        'verify': 'Vérifier'
+        'verify': 'Vérifier',
+        # Onboarding: Marketplace de modèles (Req 8.2-8.6)
+        'marketplace': 'Marketplace de modèles',
+        'marketplace_desc': "Déployez un modèle d'application prédéfini en un clic.",
+        'refresh': 'Actualiser',
+        'template': 'Modèle',
+        'app_type': 'Type',
+        'ports': 'Ports',
+        'resources': 'Ressources',
+        'deploy': 'Déployer',
+        'loading_templates': 'Chargement des modèles...',
+        'no_templates': 'Aucun modèle disponible.',
+        'enter_application_name': "Saisissez un nom d'application",
+        'deploying': 'Déploiement...',
+        'deploy_success': 'Application déployée',
+        'deploy_failed': 'Échec du déploiement',
+        'authentication_required': 'Authentification requise. Veuillez vous connecter.',
+        'access_url': "URL d'accès",
+        # Onboarding: Mode Bac à sable / Démo (Req 1.6, 2.1, 2.2, 3.3)
+        'sandbox': 'Bac à sable / Mode démo',
+        'sandbox_desc': "Provisionnez, réinitialisez ou supprimez un environnement de démonstration avec des applications d'exemple.",
+        'sandbox_provision': 'Provisionner',
+        'sandbox_reset': 'Réinitialiser',
+        'sandbox_teardown': 'Supprimer',
+        'sandbox_status': 'État',
+        'sandbox_loading': "Chargement de l'état du bac à sable...",
+        'sandbox_none': "Aucun environnement bac à sable n'est présent.",
+        'sandbox_already_exists': "Un bac à sable existe déjà. Exécutez d'abord réinitialiser ou supprimer.",
+        'sandbox_seed_failed': "Échec de l'amorçage du bac à sable ; aucune application partielle ne subsiste.",
+        'status_running': 'en cours',
+        'status_stopped': 'arrêté',
+        'status_failed': 'échoué'
     }
 }
+
+
+# Pure path/command helpers for the configurable Linux installation user.
+# These are side-effect-free string builders consumed with LINUX_USER_INSTALLATION.
+def home_path(user, *suffix_parts):
+    """Build /home/<user>/<suffix...>.
+
+    Joins the given suffix parts under the user's home directory using '/'.
+    With no suffix parts, returns '/home/<user>'.
+    """
+    base = f'/home/{user}'
+    parts = [str(part).strip('/') for part in suffix_parts if str(part) != '']
+    if parts:
+        return base + '/' + '/'.join(parts)
+    return base
+
+
+def deployments_prefix(user):
+    """Return the deployments path prefix '/home/<user>/deployments/'."""
+    return f'/home/{user}/deployments/'
+
+
+def ssh_target(user, host):
+    """Return an SSH target of the form '<user>@<host>'."""
+    return f'{user}@{host}'
+
+
+def chown_arg(user):
+    """Return an ownership argument of the form '<user>:<user>'."""
+    return f'{user}:{user}'
+
+
+def is_under_deployments(user, path):
+    """Return True iff path is under the user's deployments prefix and safe.
+
+    True only when path starts with deployments_prefix(user) and contains no
+    '..' path traversal component.
+    """
+    return path.startswith(deployments_prefix(user)) and '..' not in path

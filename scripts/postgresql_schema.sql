@@ -54,6 +54,14 @@ CREATE TABLE user_applications (
     https_port INTEGER,
     http_port2 INTEGER,
     https_port2 INTEGER,
+    http_port3 INTEGER,
+    https_port3 INTEGER,
+    http_port4 INTEGER,
+    https_port4 INTEGER,
+    http_port5 INTEGER,
+    https_port5 INTEGER,
+    http_port6 INTEGER,
+    https_port6 INTEGER,
     others_port INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
@@ -192,6 +200,7 @@ CREATE TABLE instances (
     service_id BIGINT NOT NULL,
     instance_id VARCHAR(255) NOT NULL,  -- service_name-replica-N
     server_id BIGINT NOT NULL,
+    service_name VARCHAR(255),
     container_id VARCHAR(255),
     status VARCHAR(50) DEFAULT 'pending',  -- pending, running, failed, stopped
     port INTEGER,

@@ -4,7 +4,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from ..config_postgres import TIMEOUT_SUBPROCESS_RUN, TIMEOUT_request_dev_ai_for_app_RUN, TIMEOUT_CLEAN_SHUTDOWN, TIMEOUT_QCHAT_OPERATOR_RUN, AI_ENGINE
+from ..config_postgres import TIMEOUT_SUBPROCESS_RUN, TIMEOUT_request_dev_ai_for_app_RUN, TIMEOUT_CLEAN_SHUTDOWN, TIMEOUT_QCHAT_OPERATOR_RUN, AI_ENGINE, PLTF_FOLDER, LINUX_USER_INSTALLATION
 
 # Path configuration functions
 def get_logs_dir():
@@ -61,7 +61,7 @@ def return_prompt_for_developer(detected_action, application_name, application_f
             if not safe_action:
                 return ''
         
-        context_file = f"/home/ubuntu/ai-swautomorph/shared/{safe_action}_context.md"
+        context_file = f"/home/{LINUX_USER_INSTALLATION}/{PLTF_FOLDER}/shared/{safe_action}_context.md"
         
         if os.path.exists(context_file):
             logger.info(f'AI Chat Developer - Loading context from {detected_action.upper()}_context.md')
@@ -127,7 +127,7 @@ def return_prompt_for_operator(detected_action, application_name, application_fo
             logger.warning('AI Chat Operator - Context file not found: invalid action, using default Q&A mode')
             return _create_fallback_prompt(detected_action)
         
-        context_file = f"/home/ubuntu/ai-swautomorph/shared/{safe_action}_context.md"
+        context_file = f"/home/{LINUX_USER_INSTALLATION}/{PLTF_FOLDER}/shared/{safe_action}_context.md"
                 
         if os.path.exists(context_file):
             logger.info(f'AI Chat Operator - Loading context from {detected_action.upper()}_context.md')
@@ -194,14 +194,14 @@ def api_deployment_logs(deployment_id):
     deploy_path = str(deployment[0] if isinstance(deployment, (list, tuple)) else deployment)
     
     # Validate deployment path to prevent path traversal
-    if not deploy_path or '..' in deploy_path or not deploy_path.startswith('/home/ubuntu/deployments/'):
+    if not deploy_path or '..' in deploy_path or not deploy_path.startswith(f'/home/{LINUX_USER_INSTALLATION}/deployments/'):
         logger.warning(f"[DEPLOYMENT LOGS] SECURITY - Invalid deployment path: {deploy_path} for user {user_id}")
         return jsonify({'error': 'Invalid deployment path'}), 400
     
     log_file = os.path.join(deploy_path, 'deployment.log')
     
     # Additional security check for log file path
-    if not log_file.startswith('/home/ubuntu/deployments/') or '..' in log_file:
+    if not log_file.startswith(f'/home/{LINUX_USER_INSTALLATION}/deployments/') or '..' in log_file:
         logger.warning(f"[DEPLOYMENT LOGS] SECURITY - Invalid log file path: {log_file} for user {user_id}")
         return jsonify({'error': 'Invalid log file path'}), 400
     
@@ -280,7 +280,7 @@ def api_request_dev_ai_for_app():
             yield f"data: {json.dumps({'chunk': f'AI Chat Developer - Detected action: {detected_action}'})}\n\n"
 
             # Use provided app folder or default REPO_DIR
-            repo_dir = application_folder if application_folder else "/home/ubuntu/deployments/"
+            repo_dir = application_folder if application_folder else f"/home/{LINUX_USER_INSTALLATION}/deployments/"
             repo_github_url = f"git@github.com:Sam9682/{application_name}" if application_name else "git@github.com:Sam9682/"
             repo_gitea_url = f"http://gitadmin:password@localhost:3000/gitadmin/{branch_name}"
             
@@ -298,12 +298,12 @@ def api_request_dev_ai_for_app():
                 yield f"data: {json.dumps({'chunk': f'Warning: Failed to write prompt to file: {str(e)}'})}\n\n"
 
             engine_env = os.environ.copy()
-            engine_env.update({'HOME': '/home/ubuntu', 'USER': 'ubuntu', 'PATH': '/home/ubuntu/.local/bin:' + engine_env.get('PATH', '')})
+            engine_env.update({'HOME': f'/home/{LINUX_USER_INSTALLATION}', 'USER': LINUX_USER_INSTALLATION, 'PATH': f'/home/{LINUX_USER_INSTALLATION}/.local/bin:' + engine_env.get('PATH', '')})
 
             # Use agentic_command if provided, otherwise use qchat
             if agentic_command:
                 # Execute deployControlPlan.sh with agentic_command
-                cmd_args = ['/home/ubuntu/ai-swautomorph/deployControlPlan.sh', agentic_command]
+                cmd_args = [f'/home/{LINUX_USER_INSTALLATION}/{PLTF_FOLDER}/deployControlPlan.sh', agentic_command]
                 yield f"data: {json.dumps({'chunk': f'Executing deployControlPlan.sh with command: {agentic_command}'})}\n\n"
 
             elif agentic_engine.lower() == 'shai':
@@ -519,12 +519,12 @@ User Question: {message}. Provide a helpful and informative response."""
                 yield f"data: {json.dumps({'chunk': f'Warning: Failed to write prompt to file: {str(e)}'})}\n\n"
 
             engine_env = os.environ.copy()
-            engine_env.update({'HOME': '/home/ubuntu', 'USER': 'ubuntu', 'PATH': '/home/ubuntu/.local/bin:' + engine_env.get('PATH', '')})
+            engine_env.update({'HOME': f'/home/{LINUX_USER_INSTALLATION}', 'USER': LINUX_USER_INSTALLATION, 'PATH': f'/home/{LINUX_USER_INSTALLATION}/.local/bin:' + engine_env.get('PATH', '')})
 
             # Use agentic_command if provided, otherwise use qchat
             if agentic_command:
                 # Execute deployControlPlan.sh with agentic_command
-                cmd_args = ['/home/ubuntu/ai-swautomorph/deployControlPlan.sh', agentic_command]
+                cmd_args = [f'/home/{LINUX_USER_INSTALLATION}/{PLTF_FOLDER}/deployControlPlan.sh', agentic_command]
                 yield f"data: {json.dumps({'chunk': f'Executing deployControlPlan.sh with command: {agentic_command}'})}\n\n"
 
             elif agentic_engine.lower() == 'shai':

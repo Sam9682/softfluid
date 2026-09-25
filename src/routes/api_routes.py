@@ -11,7 +11,7 @@ import socket
 import logging
 from datetime import datetime
 from .. import config_postgres
-from ..config_postgres import DOMAIN, TIMEOUT_GITEA_HTTP_POST, TIMEOUT_SUBPROCESS_RUN
+from ..config_postgres import DOMAIN, TIMEOUT_GITEA_HTTP_POST, TIMEOUT_SUBPROCESS_RUN, LINUX_USER_INSTALLATION, ssh_target, chown_arg, deployments_prefix, is_under_deployments
 
 # Configure logging for API activities
 logger = logging.getLogger(__name__)
@@ -241,6 +241,35 @@ def api_applications_pdf_data():
         (session['user_id'],), fetch_one=True
     )
 
+    if not user or user[0] != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        apps_data = db_manager.execute_query(
+            'SELECT id, name, description, git_url, git_repo_size FROM applications ORDER BY name',
+            fetch_all=True
+        )
+        apps = [
+            {
+                'id': row[0], 
+                'name': row[1], 
+                'description': row[2], 
+                'git_url': row[3], 
+                'git_repo_size': row[4] or 50
+            } 
+            for row in apps_data
+        ]
+        
+        from ..config_postgres import DOMAIN
+        
+        return jsonify({
+            'applications': apps,
+            'domain': DOMAIN
+        })
+    except Exception as e:
+        logger.error(f"Error fetching PDF data: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @api_bp.route('/applications/available', methods=['GET'])
 def api_available_applications():
     """Get applications that are NOT assigned to the current user"""
@@ -275,35 +304,6 @@ def api_available_applications():
     except Exception as e:
         logger.error(f"Error fetching available applications: {str(e)}")
         return jsonify({'error': str(e)}), 500
-    
-    if not user or user[0] != 'admin':
-        return jsonify({'error': 'Admin access required'}), 403
-    
-    try:
-        apps_data = db_manager.execute_query(
-            'SELECT id, name, description, git_url, git_repo_size FROM applications ORDER BY name',
-            fetch_all=True
-        )
-        apps = [
-            {
-                'id': row[0], 
-                'name': row[1], 
-                'description': row[2], 
-                'git_url': row[3], 
-                'git_repo_size': row[4] or 50
-            } 
-            for row in apps_data
-        ]
-        
-        from ..config_postgres import DOMAIN
-        
-        return jsonify({
-            'applications': apps,
-            'domain': DOMAIN
-        })
-    except Exception as e:
-        logger.error(f"Error fetching PDF data: {e}")
-        return jsonify({'error': str(e)}), 500
 
 @api_bp.route('/applications/<int:app_id>', methods=['PUT', 'DELETE'])
 def api_application_actions(app_id):
@@ -325,10 +325,37 @@ def api_application_actions(app_id):
             name = data.get('name')
             url = data.get('url', '')
             description = data.get('description', '')
+            new_id = data.get('new_id')
             
             if not name:
                 return jsonify({'error': 'Name required'}), 400
             
+            target_id = int(new_id) if new_id is not None else app_id
+            
+            # If new_id is provided and different from current, check uniqueness
+            if target_id != app_id:
+                existing = db_manager.execute_query(
+                    'SELECT id FROM applications WHERE id = %s',
+                    (target_id,), fetch_one=True
+                )
+                if existing:
+                    return jsonify({'error': f'Application ID {target_id} already exists. Please choose a unique ID.'}), 400
+            
+            # Propagate the edited link to the per-user user_applications.url
+            # rows ONLY when the link actually changed. Read the currently
+            # stored applications.url so we can tell a real link edit from a
+            # non-link edit that merely re-submits the existing (or empty) url:
+            #   - non-link edit (url unchanged, incl. empty) -> leave
+            #     user_applications.url untouched (preservation Req 3.1)
+            #   - genuine link change -> propagate to user_applications.url
+            #     (Req 2.1/2.2/2.3), for both ID-unchanged and ID-changing paths
+            current_app = db_manager.execute_query(
+                'SELECT url FROM applications WHERE id = %s',
+                (app_id,), fetch_one=True
+            )
+            current_url = current_app[0] if current_app else None
+            link_changed = (url or '') != (current_url or '')
+
             git_url = data.get('git_url', '')
             git_repo_size = data.get('git_repo_size', 50)
             docker_build_duration = data.get('docker_build_duration')
@@ -336,10 +363,30 @@ def api_application_actions(app_id):
             docker_stop_duration = data.get('docker_stop_duration')
             docker_ps_duration = data.get('docker_ps_duration')
             
-            db_manager.execute_query('''UPDATE applications SET name = %s, url = %s, description = %s, git_url = %s, git_repo_size = %s,
-                       docker_build_duration = %s, docker_start_duration = %s, docker_stop_duration = %s, docker_ps_duration = %s
-                WHERE id = %s
-            ''', (name, url, description, git_url, git_repo_size, docker_build_duration, docker_start_duration, docker_stop_duration, docker_ps_duration, app_id))
+            if target_id != app_id:
+                # ID is changing - run all updates in a single transaction with deferred constraints
+                with db_manager.get_db_connection() as conn:
+                    with conn.cursor() as cursor:
+                        cursor.execute('SET CONSTRAINTS ALL DEFERRED')
+                        cursor.execute('''UPDATE applications SET id = %s, name = %s, url = %s, description = %s, git_url = %s, git_repo_size = %s,
+                                   docker_build_duration = %s, docker_start_duration = %s, docker_stop_duration = %s, docker_ps_duration = %s
+                            WHERE id = %s
+                        ''', (target_id, name, url, description, git_url, git_repo_size, docker_build_duration, docker_start_duration, docker_stop_duration, docker_ps_duration, app_id))
+                        cursor.execute('UPDATE user_applications SET application_id = %s WHERE application_id = %s', (target_id, app_id))
+                        if link_changed:
+                            cursor.execute('UPDATE user_applications SET url = %s WHERE application_id = %s', (url, target_id))
+                        cursor.execute('UPDATE deployments SET application_id = %s WHERE application_id = %s', (target_id, app_id))
+                        cursor.execute('UPDATE application_costs SET application_id = %s WHERE application_id = %s', (target_id, app_id))
+                        cursor.execute('UPDATE billing_activities SET application_id = %s WHERE application_id = %s', (target_id, app_id))
+                    conn.commit()
+            else:
+                # ID unchanged - simple update
+                db_manager.execute_query('''UPDATE applications SET name = %s, url = %s, description = %s, git_url = %s, git_repo_size = %s,
+                           docker_build_duration = %s, docker_start_duration = %s, docker_stop_duration = %s, docker_ps_duration = %s
+                    WHERE id = %s
+                ''', (name, url, description, git_url, git_repo_size, docker_build_duration, docker_start_duration, docker_stop_duration, docker_ps_duration, app_id))
+                if link_changed:
+                    db_manager.execute_query('UPDATE user_applications SET url = %s WHERE application_id = %s', (url, app_id))
             
             return jsonify({'message': 'Application updated successfully'})
         
@@ -515,8 +562,8 @@ def api_user_applications(user_id):
             
             try:
                 # Calculate ports for the user and application
-                from ..database_postgres import calculate_app_ports
-                HTTP_PORT, HTTPS_PORT, HTTP_PORT2, HTTPS_PORT2 = calculate_app_ports(user_id, app_id)
+                from ..database_postgres import calculate_app_ports, APP_PORT_COLUMNS_SQL, APP_PORT_PLACEHOLDERS_SQL
+                app_ports = calculate_app_ports(user_id, app_id)
                 
                 # Get application name for URL generation
                 app_result = db_manager.execute_query(
@@ -527,11 +574,11 @@ def api_user_applications(user_id):
                     return jsonify({'error': 'Application not found'}), 404
                 
                 app_name = app_result[0]
-                url = f'https://{DOMAIN}:{HTTPS_PORT}'
+                url = f'https://{DOMAIN}:{app_ports[1]}'
                 
                 db_manager.execute_query(
-                    'INSERT INTO user_applications (user_id, application_id, url, http_port, https_port, http_port2, https_port2) VALUES (%s, %s, %s, %s, %s, %s, %s)',
-                    (user_id, app_id, url, HTTP_PORT, HTTPS_PORT, HTTP_PORT2, HTTPS_PORT2)
+                    f'INSERT INTO user_applications (user_id, application_id, url, {APP_PORT_COLUMNS_SQL}) VALUES (%s, %s, %s, {APP_PORT_PLACEHOLDERS_SQL})',
+                    (user_id, app_id, url, *app_ports)
                 )
                 
                 # Update nginx configuration with dynamic location
@@ -1120,18 +1167,20 @@ def api_server_allocate():
             return jsonify({'error': 'Application name required'}), 400
         
         # Find available server based on capacity constraints with usage counts
-        servers = db_manager.execute_query('''SELECT s.id, s.server_capacity_user_max, s.server_capacity_appli_max,
+        servers = db_manager.execute_query('''SELECT s.id, COALESCE(s.server_capacity_user_max, 100) AS server_capacity_user_max, COALESCE(s.server_capacity_appli_max, 100) AS server_capacity_appli_max,
                    COALESCE(user_counts.user_count, 0) as current_users,
                    COALESCE(app_counts.app_count, 0) as current_apps
             FROM servers s
             LEFT JOIN (
                 SELECT server_id, COUNT(DISTINCT user_id) as user_count
                 FROM deployments
+                WHERE server_id IS NOT NULL
                 GROUP BY server_id
             ) user_counts ON s.id = user_counts.server_id
             LEFT JOIN (
                 SELECT server_id, COUNT(DISTINCT application_name) as app_count
                 FROM deployments
+                WHERE server_id IS NOT NULL
                 GROUP BY server_id
             ) app_counts ON s.id = app_counts.server_id
             WHERE s.server_status = 'STAND_BY' OR s.server_status = 'ACTIVE'
@@ -1142,16 +1191,22 @@ def api_server_allocate():
             return jsonify({'error': 'No standby servers available'}), 503
         
         for server in servers:
-            server_id, user_max, appli_max, user_count, appli_count = server
-            
-            # Check if server has capacity
-            if user_count < user_max and appli_count < appli_max:
-                # Update server status to ACTIVE only if currently STAND_BY
-                db_manager.execute_query('''UPDATE servers SET server_status = 'ACTIVE' 
-                    WHERE id = %s AND server_status = 'STAND_BY'
-                ''', (server_id,))
+            try:
+                server_id, user_max, appli_max, user_count, appli_count = server
                 
-                return jsonify({'server_id': server_id})
+                # Check if server has capacity
+                if user_count < user_max and appli_count < appli_max:
+                    # Update server status to ACTIVE only if currently STAND_BY
+                    db_manager.execute_query('''UPDATE servers SET server_status = 'ACTIVE' 
+                        WHERE id = %s AND server_status = 'STAND_BY'
+                    ''', (server_id,))
+                    
+                    return jsonify({'server_id': server_id})
+            except Exception as server_error:
+                # A problematic candidate server must not abort evaluation of the
+                # remaining servers; log and skip to the next candidate.
+                logger.warning(f"[SERVER ALLOCATE] Skipping server {server} due to evaluation error: {str(server_error)}")
+                continue
         
         return jsonify({'error': 'All servers at capacity'}), 503
         
@@ -1254,6 +1309,12 @@ def _handle_clone_action(user_id, app_name, git_url, server_id, deployment_path,
         return jsonify({'error': f'Server {server_id} not found'}), 400
     
     target_server_ip = target_server[0]
+
+    # Req 4.1: reject a resolved-but-unusable server IP before any command is built
+    if target_server_ip is None or (isinstance(target_server_ip, str) and not target_server_ip.strip()):
+        logger.error(f"[DEPLOYMENT API] CLONE - FAILED - Server {server_id} has no usable IP address")
+        return jsonify({'error': f'Server {server_id} has no usable IP address'}), 400
+
     is_local_server = (target_server_ip == current_server_ip or target_server_ip == "127.0.0.1" or target_server_ip == "localhost")
     
     # Determine if git_url is GitHub or Gitea/localhost
@@ -1261,7 +1322,7 @@ def _handle_clone_action(user_id, app_name, git_url, server_id, deployment_path,
     
     # Execute clone operation
     git_env = os.environ.copy()
-    git_env.update({'GIT_CONFIG_NOSYSTEM': '1', 'HOME': '/home/ubuntu', 'USER': 'ubuntu'})
+    git_env.update({'GIT_CONFIG_NOSYSTEM': '1', 'HOME': f'/home/{LINUX_USER_INSTALLATION}', 'USER': LINUX_USER_INSTALLATION})
     
     if is_local_server:
         if is_github:
@@ -1299,12 +1360,12 @@ def _handle_clone_action(user_id, app_name, git_url, server_id, deployment_path,
                 f"mkdir -p {deployment_path}",
                 f"cd {os.path.dirname(deployment_path)} && git clone --recurse-submodules {git_url} {os.path.basename(deployment_path)}"
             ]
-            ssh_command = f"ssh -o StrictHostKeyChecking=no ubuntu@{target_server_ip} '{'; '.join(ssh_commands)}'"
+            ssh_command = f"ssh -o StrictHostKeyChecking=no {ssh_target(LINUX_USER_INSTALLATION, target_server_ip)} '{'; '.join(ssh_commands)}'"
             result = subprocess.run(ssh_command, shell=True, capture_output=True, text=True, timeout=TIMEOUT_SUBPROCESS_RUN)
             logger.info(f"[DEPLOYMENT API] CLONE - GitHub remote: git clone --recurse-submodules {git_url} {deployment_path}")
         else:
             # Gitea/localhost: Use fetch and switch
-            ssh_command = f"ssh -o StrictHostKeyChecking=no ubuntu@{target_server_ip} 'if [ -d {deployment_path} ]; then cd {deployment_path} && git fetch --all && git remote set-url origin {git_url} && git checkout -B main origin/main; else mkdir -p {deployment_path} && git clone --recurse-submodules {git_url} {deployment_path}; fi'"
+            ssh_command = f"ssh -o StrictHostKeyChecking=no {ssh_target(LINUX_USER_INSTALLATION, target_server_ip)} 'if [ -d {deployment_path} ]; then cd {deployment_path} && git fetch --all && git remote set-url origin {git_url} && git checkout -B main origin/main; else mkdir -p {deployment_path} && git clone --recurse-submodules {git_url} {deployment_path}; fi'"
             result = subprocess.run(ssh_command, shell=True, capture_output=True, text=True, timeout=TIMEOUT_SUBPROCESS_RUN)
             logger.info(f"[DEPLOYMENT API] CLONE - Gitea/localhost remote: git fetch and switch to {git_url}")
     
@@ -1340,12 +1401,12 @@ def _handle_clone_action(user_id, app_name, git_url, server_id, deployment_path,
         
         # Copy SSL certificates after successful clone
         ssl_env = os.environ.copy()
-        ssl_env['USER'] = 'ubuntu'
+        ssl_env['USER'] = LINUX_USER_INSTALLATION
         
         if is_local_server:
-            ssl_command = f"mkdir -p {deployment_path}/ssl && if [ -f {PROJECT_ROOT}/ssl/fullchain_domain.crt ] && [ -f {PROJECT_ROOT}/ssl/privateKey_domain.key ]; then cp {PROJECT_ROOT}/ssl/fullchain_domain.crt {deployment_path}/ssl/fullchain.pem && cp {PROJECT_ROOT}/ssl/privateKey_domain.key {deployment_path}/ssl/privkey.pem && chmod 600 {deployment_path}/ssl/*.pem; elif command -v certbot > /dev/null 2>&1; then sudo certbot certonly --standalone -d www.{DOMAIN} --email admin@{DOMAIN} --agree-tos --non-interactive --quiet && sudo cp /etc/letsencrypt/live/www.{DOMAIN}/fullchain.pem {deployment_path}/ssl/ && sudo cp /etc/letsencrypt/live/www.{DOMAIN}/privkey.pem {deployment_path}/ssl/ && sudo chown -R ubuntu:ubuntu {deployment_path}/ssl/ && chmod 600 {deployment_path}/ssl/*.pem; fi"
+            ssl_command = f"mkdir -p {deployment_path}/ssl && if [ -f {PROJECT_ROOT}/ssl/fullchain_domain.crt ] && [ -f {PROJECT_ROOT}/ssl/privateKey_domain.key ]; then cp {PROJECT_ROOT}/ssl/fullchain_domain.crt {deployment_path}/ssl/fullchain.pem && cp {PROJECT_ROOT}/ssl/privateKey_domain.key {deployment_path}/ssl/privkey.pem && chmod 600 {deployment_path}/ssl/*.pem; elif command -v certbot > /dev/null 2>&1; then sudo certbot certonly --standalone -d www.{DOMAIN} --email admin@{DOMAIN} --agree-tos --non-interactive --quiet && sudo cp /etc/letsencrypt/live/www.{DOMAIN}/fullchain.pem {deployment_path}/ssl/ && sudo cp /etc/letsencrypt/live/www.{DOMAIN}/privkey.pem {deployment_path}/ssl/ && sudo chown -R {chown_arg(LINUX_USER_INSTALLATION)} {deployment_path}/ssl/ && chmod 600 {deployment_path}/ssl/*.pem; fi"
         else:
-            ssl_command = f"ssh -o StrictHostKeyChecking=no ubuntu@{target_server_ip} 'mkdir -p {deployment_path}/ssl && if [ -f {PROJECT_ROOT}/ssl/fullchain_domain.crt ] && [ -f {PROJECT_ROOT}/ssl/privateKey_domain.key ]; then cp {PROJECT_ROOT}/ssl/fullchain_domain.crt {deployment_path}/ssl/fullchain.pem && cp {PROJECT_ROOT}/ssl/privateKey_domain.key {deployment_path}/ssl/privkey.pem && chmod 600 {deployment_path}/ssl/*.pem; elif command -v certbot > /dev/null 2>&1; then sudo systemctl stop nginx 2>/dev/null || true && sudo certbot certonly --standalone -d www.{DOMAIN} --email admin@{DOMAIN} --agree-tos --non-interactive --quiet && sudo cp /etc/letsencrypt/live/www.{DOMAIN}/fullchain.pem {deployment_path}/ssl/ && sudo cp /etc/letsencrypt/live/www.{DOMAIN}/privkey.pem {deployment_path}/ssl/ && sudo chown -R ubuntu:ubuntu {deployment_path}/ssl/ && chmod 600 {deployment_path}/ssl/*.pem; fi'"
+            ssl_command = f"ssh -o StrictHostKeyChecking=no {ssh_target(LINUX_USER_INSTALLATION, target_server_ip)} 'mkdir -p {deployment_path}/ssl && if [ -f {PROJECT_ROOT}/ssl/fullchain_domain.crt ] && [ -f {PROJECT_ROOT}/ssl/privateKey_domain.key ]; then cp {PROJECT_ROOT}/ssl/fullchain_domain.crt {deployment_path}/ssl/fullchain.pem && cp {PROJECT_ROOT}/ssl/privateKey_domain.key {deployment_path}/ssl/privkey.pem && chmod 600 {deployment_path}/ssl/*.pem; elif command -v certbot > /dev/null 2>&1; then sudo systemctl stop nginx 2>/dev/null || true && sudo certbot certonly --standalone -d www.{DOMAIN} --email admin@{DOMAIN} --agree-tos --non-interactive --quiet && sudo cp /etc/letsencrypt/live/www.{DOMAIN}/fullchain.pem {deployment_path}/ssl/ && sudo cp /etc/letsencrypt/live/www.{DOMAIN}/privkey.pem {deployment_path}/ssl/ && sudo chown -R {chown_arg(LINUX_USER_INSTALLATION)} {deployment_path}/ssl/ && chmod 600 {deployment_path}/ssl/*.pem; fi'"
 
         ssl_result = subprocess.run(ssl_command, shell=True, capture_output=True, text=True, env=ssl_env)
         logger.info(f"[DEPLOYMENT API] CLONE - SSL setup result: {ssl_result.returncode}, stdout: {ssl_result.stdout}, stderr: {ssl_result.stderr}")
@@ -1389,6 +1450,7 @@ def _handle_clone_action(user_id, app_name, git_url, server_id, deployment_path,
         # test if is_github then display CLONE else SWITCH in the error message
         error_msg = f'Git {"clone" if is_github else "switch"} failed: {result.stderr}'
         logger.error(f"[DEPLOYMENT API] GIT - FAILED - {error_msg}")
+        logger.error(f"[DEPLOYMENT API] GIT - CMD = {ssh_command}")
         return jsonify({'error': error_msg, 'logs': ssl_result.stdout}), 400
     
     return jsonify({'message': f'Clone completed for {app_name}', 'status': status, 'logs': ssl_result.stdout}), 202
@@ -1553,7 +1615,7 @@ def api_deployments():
             )
             username = user[0] if user else f'user_{session["user_id"]}'
         
-        deployment_path = f'/home/ubuntu/deployments/{username}/{app_name.lower().replace(" ", "-")}'
+        deployment_path = f'{deployments_prefix(LINUX_USER_INSTALLATION)}{username}/{app_name.lower().replace(" ", "-")}'
         
         try:
             if action == 'clone':
@@ -1594,14 +1656,14 @@ def api_deployment_logs(deployment_id):
     deploy_path = str(deployment[0] if isinstance(deployment, (list, tuple)) else deployment)
     
     # Validate deployment path to prevent path traversal
-    if not deploy_path or '..' in deploy_path or not deploy_path.startswith('/home/ubuntu/deployments/'):
+    if not deploy_path or not is_under_deployments(LINUX_USER_INSTALLATION, deploy_path):
         logger.warning(f"[DEPLOYMENT LOGS] SECURITY - Invalid deployment path: {deploy_path} for user {user_id}")
         return jsonify({'error': 'Invalid deployment path'}), 400
     
     log_file = os.path.join(deploy_path, 'deployment.log')
     
     # Additional security check for log file path
-    if not log_file.startswith('/home/ubuntu/deployments/') or '..' in log_file:
+    if not is_under_deployments(LINUX_USER_INSTALLATION, log_file):
         logger.warning(f"[DEPLOYMENT LOGS] SECURITY - Invalid log file path: {log_file} for user {user_id}")
         return jsonify({'error': 'Invalid log file path'}), 400
     

@@ -7,6 +7,7 @@ runtime (Docker or Podman).
 
 import json
 import logging
+import logging.handlers
 import os
 import signal
 import socket
@@ -161,7 +162,7 @@ class ServerlessWorker:
                 )
                 conn.commit()
 
-            return {
+            job = {
                 'id': row['id'],
                 'user_id': row['user_id'],
                 'image': row['image'],
@@ -169,6 +170,11 @@ class ServerlessWorker:
                 'environment': row['environment'],
                 'timeout_seconds': row['timeout_seconds'],
             }
+            logger.info(
+                "Claimed job %s (image=%s) on worker %s",
+                job['id'], job['image'], self.worker_id,
+            )
+            return job
         except Exception as e:
             logger.error("Failed to claim job: %s", e)
             if conn:
@@ -197,6 +203,11 @@ class ServerlessWorker:
             job: Dictionary containing the job record fields from the database.
         """
         container_id = None
+        start_time = time.time()
+        logger.info(
+            "Execution start: job_id=%s image=%s command=%s",
+            job['id'], job['image'], job.get('command'),
+        )
         try:
             # 1. Validate registry whitelist
             if not validate_image_registry(job['image'], self.registry_whitelist):
@@ -229,15 +240,34 @@ class ServerlessWorker:
             # 6. Store results and mark completed
             self.store_result(job['id'], exit_code, stdout, stderr)
             self.mark_completed(job['id'], exit_code)
+            duration = time.time() - start_time
+            logger.info(
+                "Execution end: job_id=%s status=completed exit_code=%d duration=%.2fs",
+                job['id'], exit_code, duration,
+            )
 
         except CancellationError:
-            logger.info("Job %s was cancelled during execution", job['id'])
+            duration = time.time() - start_time
+            logger.info(
+                "Execution end: job_id=%s status=cancelled duration=%.2fs",
+                job['id'], duration,
+            )
         except TimeoutError:
             if container_id:
                 self.runtime.stop_container(container_id, timeout=SERVERLESS_CONFIG['container_stop_timeout'])
             self.mark_timeout(job['id'])
+            duration = time.time() - start_time
+            logger.warning(
+                "Execution end: job_id=%s status=timeout duration=%.2fs",
+                job['id'], duration,
+            )
         except Exception as e:
             self.mark_failed(job['id'], str(e))
+            duration = time.time() - start_time
+            logger.error(
+                "Execution end: job_id=%s status=failed duration=%.2fs error=%s",
+                job['id'], duration, e,
+            )
         finally:
             if container_id:
                 self.runtime.cleanup(container_id)
@@ -491,7 +521,7 @@ def main() -> None:
     """Entry point for running the worker as python -m src.serverless.worker.
 
     Sets up:
-    - Logging configuration for the worker process.
+    - Logging configuration for the worker process with file rotation.
     - Signal handling for SIGTERM and SIGINT to trigger graceful shutdown.
     - Container runtime detection (Docker or Podman).
     - Database configuration from environment variables.
@@ -500,14 +530,37 @@ def main() -> None:
     The worker_id is read from the WORKER_ID environment variable, falling
     back to a generated default of 'worker-<hostname>-<pid>'.
     """
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.StreamHandler(),
-        ],
+    # Configure logging with RotatingFileHandler and StreamHandler
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    formatter = logging.Formatter(log_format)
+
+    # Get project root directory dynamically
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     )
+    log_dir = os.path.join(project_root, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "serverless_worker.log")
+
+    # Rotating file handler: 10 MB max, 5 backup files
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_file, maxBytes=10 * 1024 * 1024, backupCount=5
+    )
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+
+    # Configure root logger for the serverless namespace
+    root_logger = logging.getLogger("src.serverless")
+    root_logger.setLevel(logging.INFO)
+    root_logger.handlers.clear()
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    root_logger.propagate = False
 
     # Determine worker ID
     worker_id = os.environ.get(
