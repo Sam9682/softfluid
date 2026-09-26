@@ -104,6 +104,23 @@ def return_prompt_for_developer(detected_action, application_name, application_f
 
     return l_prompt
 
+# Inventory of recognized executable operator actions. Mirrors the operator
+# dropdown in templates/dashboard.html. MODIFY_CODE is intentionally excluded
+# because it is redirected to the Developer agent before prompt building.
+RECOGNIZED_OPERATOR_ACTIONS = {'START', 'STOP', 'LOGS', 'PS', 'SPECIFY', 'RESTORE_DATABASE'}
+
+def _is_recognized_operator_action(safe_action):
+    """Return True if the given action is a recognized executable operator action.
+
+    Sanitizes the action the same way as return_prompt_for_operator (upper-case,
+    alphanumeric + underscore, max 50 chars) and checks membership in
+    RECOGNIZED_OPERATOR_ACTIONS. Returns False for empty/None/non-string input.
+    """
+    if not safe_action or not isinstance(safe_action, str):
+        return False
+    normalized = ''.join(c for c in safe_action.upper() if c.isalnum() or c == '_')[:50]
+    return normalized in RECOGNIZED_OPERATOR_ACTIONS
+
 def _create_fallback_prompt(message):
     """Create fallback Q&A prompt for invalid actions"""
     return f"""You are a helpful Virtual Advisor assistant. Answer the user's question clearly and concisely.
@@ -113,19 +130,28 @@ Provide a helpful and informative response.
 """
 
 def return_prompt_for_operator(detected_action, application_name, application_folder, user_name, user_email, version='default'):
+    """Resolve the operator prompt for a detected action.
+
+    Returns a tuple ``(l_prompt, is_executing)`` where ``is_executing`` is True
+    only when a real ``{SAFE_ACTION}_context.md`` file was loaded and the
+    executing prompt was built. For a recognized executable action whose context
+    file is missing, this returns an explicit failure ``(None, False)`` instead
+    of silently degrading to the advisor fallback. Genuinely invalid/empty
+    actions still receive the advisor fallback with ``is_executing == False``.
+    """
     l_prompt = ''
 
     if version == 'default':
         # Sanitize detected_action to prevent path traversal
         if not detected_action or not isinstance(detected_action, str):
             logger.warning('AI Chat Operator - Context file not found: invalid action, using default Q&A mode')
-            return _create_fallback_prompt(detected_action)
+            return _create_fallback_prompt(detected_action), False
         
         # Remove any path traversal characters and limit to alphanumeric + underscore
         safe_action = ''.join(c for c in detected_action.upper() if c.isalnum() or c == '_')[:50]
         if not safe_action:
             logger.warning('AI Chat Operator - Context file not found: invalid action, using default Q&A mode')
-            return _create_fallback_prompt(detected_action)
+            return _create_fallback_prompt(detected_action), False
         
         context_file = f"/home/{LINUX_USER_INSTALLATION}/{PLTF_FOLDER}/shared/{safe_action}_context.md"
                 
@@ -163,12 +189,24 @@ def return_prompt_for_operator(detected_action, application_name, application_fo
             except (KeyError, AttributeError) as e:
                 logger.error(f'AI Chat Operator - Template replacement error: {str(e)}')
                 l_prompt = ''
+            return l_prompt, True
         else:
+            # Context file is missing. Distinguish a recognized executable
+            # operator action (missing context is an error, not a reason to
+            # chat) from a genuinely invalid/empty action.
+            if _is_recognized_operator_action(safe_action):
+                logger.error(
+                    f'AI Chat Operator - Missing context file for recognized action '
+                    f'{safe_action}: {context_file}. Refusing to degrade to advisor '
+                    f'mode; reporting explicit failure.'
+                )
+                return None, False
             logger.warning(f'AI Chat Operator - Context file not found: {context_file}, using default Q&A mode')
             l_prompt = _create_fallback_prompt(detected_action)
             logger.info(f'AI Chat Operator - (Context {context_file} not found) Prompt : {l_prompt[:120]}')
+            return l_prompt, False
 
-    return l_prompt
+    return l_prompt, False
 
 @genai_bp.route('/deployments/<int:deployment_id>/logs')
 def api_deployment_logs(deployment_id):
@@ -485,14 +523,27 @@ def api_request_ops_ai_for_app():
 
                 # 🧠 Prompt complet envoyé à Agentic AI
                 try:
-                    l_prompt = return_prompt_for_operator(detected_action, application_name, application_folder, user_name, user_email)
-                    logger.info(f'AI Chat Operator - Prompt : {l_prompt[:120]}')
+                    l_prompt, is_executing = return_prompt_for_operator(detected_action, application_name, application_folder, user_name, user_email)
                 except Exception as e:
                     yield f"data: {json.dumps({'error': f'Failed to generate prompt: {str(e)}'})}\n\n"
                     return
 
+                # Recognized action with a missing context resolves to an
+                # explicit failure: surface a clear error, report failure, and
+                # do not launch the engine for this action.
+                if l_prompt is None:
+                    l_msg = (f"[VIRTUAL OPERATIONS] ERROR: no execution context available for "
+                             f"action '{detected_action}'; the action was not launched.")
+                    logger.error(l_msg)
+                    yield f"data: {json.dumps({'error': l_msg})}\n\n"
+                    yield f"data: {json.dumps({'done': True, 'success': False, 'returncode': None})}\n\n"
+                    return
+
+                logger.info(f'AI Chat Operator - Prompt : {l_prompt[:120]}')
+
             else:
                 # Simple prompt for Q&A without code execution
+                is_executing = False
                 l_prompt = f"""You are a helpful Virtual Advisor assistant. Answer the user's question clearly and concisely.
 Do not execute any commands or modify any files. Just provide helpful information and guidance.
 User Question: {message}. Provide a helpful and informative response."""
@@ -592,8 +643,13 @@ User Question: {message}. Provide a helpful and informative response."""
                 os.killpg(os.getpgid(process.pid), signal.SIGKILL)
                 process.returncode = -1
             
-            # Record billing activity for START and STOP actions if successful
-            if (detected_action.upper() == 'START' or detected_action.upper() == 'STOP') and process.returncode == 0 and application_name:
+            # Record billing activity for START and STOP actions only when the
+            # action was genuinely executed (an executing prompt built from a
+            # real context file), the engine exited cleanly, and an application
+            # is targeted. When is_executing is False (advisor / non-execution
+            # path) billing is skipped entirely, so a non-action is never
+            # billed even if the engine returns 0.
+            if is_executing and (detected_action.upper() == 'START' or detected_action.upper() == 'STOP') and process.returncode == 0 and application_name:
                 try:
                     from .billing_routes import record_billing_activity
                     record_billing_activity(session['user_id'], application_name, detected_action)

@@ -62,6 +62,7 @@ if ! openstack server show "$INSTANCE_NAME" > /dev/null 2>&1; then
         --flavor "$FLAVOR_NAME" \
         --key-name "$KEYPAIR_NAME" \
         --network "$NETWORK_NAME" \
+        --user-data cloud-init-script.yaml \
         "$INSTANCE_NAME"
 fi
 

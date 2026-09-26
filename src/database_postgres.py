@@ -1,4 +1,4 @@
-"""PostgreSQL database manager for SoftFluid-Explorer"""
+"""PostgreSQL database manager for OPCP-Explorer"""
 import psycopg2
 import psycopg2.pool
 import threading
@@ -17,7 +17,7 @@ def load_deploy_config():
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'conf', 'deploy.ini')
 
     # Default values matching deployControlPlan.sh
-    NAME_OF_APPLICATION = "softfluid-explorer"
+    NAME_OF_APPLICATION = "opcp-explorer"
     APPLICATION_IDENTITY_NUMBER = 0
     RANGE_START = 6000
     RANGE_RESERVED = 100
@@ -481,9 +481,22 @@ def init_db():
                 conn.rollback()
                 print(f"[INFO] Deploy templates migration check: {e}")
 
-            # Ensure softfluid-serverless-brik application exists and is assigned to all users
+            # Apply extended ports migration for user_applications (ports 3-6)
             try:
-                cursor.execute("SELECT id FROM applications WHERE name = %s", ('softfluid-serverless-brik',))
+                migration_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'migration', 'add_extended_ports_to_user_applications.sql')
+                if os.path.exists(migration_path):
+                    with open(migration_path, 'r') as f:
+                        migration_sql = f.read()
+                    cursor.execute(migration_sql)
+                    conn.commit()
+            except Exception as e:
+                # Migration may already be applied, ignore errors
+                conn.rollback()
+                print(f"[INFO] Extended ports migration check: {e}")
+
+            # Ensure opcp-serverless-brik application exists and is assigned to all users
+            try:
+                cursor.execute("SELECT id FROM applications WHERE name = %s", ('opcp-serverless-brik',))
                 serverless_app = cursor.fetchone()
                 if not serverless_app:
                     # Insert the application
@@ -491,7 +504,7 @@ def init_db():
                         INSERT INTO applications (name, description, git_url, git_repo_size, docker_build_duration, docker_start_duration, docker_stop_duration, docker_ps_duration)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING id
-                    ''', ('softfluid-serverless-brik', 'SoftFluid Serverless Docker Execution', 'https://github.com/Sam9682/softfluid-serverless-brik.git', 10, 30, 30, 10, 1))
+                    ''', ('opcp-serverless-brik', 'OPCP Serverless Docker Execution', 'https://github.com/Sam9682/opcp-serverless-brik.git', 10, 30, 30, 10, 1))
                     serverless_app_id = cursor.fetchone()[0]
                     # Insert default cost
                     cursor.execute('INSERT INTO application_costs (application_id, cost_per_day) VALUES (%s, %s)', (serverless_app_id, 1.0))
@@ -518,32 +531,32 @@ def init_db():
                 admin_row = cursor.fetchone()
                 if admin_row:
                     admin_id = admin_row[0]
-                    cursor.execute("SELECT id FROM deployments WHERE user_id = %s AND application_name = %s", (admin_id, 'softfluid-serverless-brik'))
+                    cursor.execute("SELECT id FROM deployments WHERE user_id = %s AND application_name = %s", (admin_id, 'opcp-serverless-brik'))
                     if not cursor.fetchone():
                         cursor.execute("SELECT id FROM servers LIMIT 1")
                         server_row = cursor.fetchone()
                         server_id = server_row[0] if server_row else None
-                        swautomorph_url = f"https://{DOMAIN}/admin/softfluid-serverless-brik"
+                        swautomorph_url = f"https://{DOMAIN}/admin/opcp-serverless-brik"
                         cursor.execute('''
                             INSERT INTO deployments (user_id, application_id, application_name, status, server_id, swautomorph_url)
                             VALUES (%s, %s, %s, %s, %s, %s)
-                        ''', (admin_id, serverless_app_id, 'softfluid-serverless-brik', 'RUNNING', server_id, swautomorph_url))
+                        ''', (admin_id, serverless_app_id, 'opcp-serverless-brik', 'RUNNING', server_id, swautomorph_url))
 
                 conn.commit()
-                print("[INFO] softfluid-serverless-brik application ensured for all users")
+                print("[INFO] opcp-serverless-brik application ensured for all users")
             except Exception as e:
                 conn.rollback()
-                print(f"[INFO] softfluid-serverless-brik setup check: {e}")
+                print(f"[INFO] opcp-serverless-brik setup check: {e}")
 
             # Insert default applications from conf/default_apps.
             # Use ON CONFLICT so this is idempotent and independent of whether
             # the applications table is already partially populated (e.g. the
-            # softfluid-serverless-brik record inserted above). Previously this was
+            # opcp-serverless-brik record inserted above). Previously this was
             # guarded by "COUNT(*) == 0", but since the serverless-brik block
             # always inserts a row first, the count was never zero and the
             # default apps were never loaded.
             # Seed the default applications AND their default costs in their OWN
-            # committed transaction, mirroring the softfluid-serverless-brik block
+            # committed transaction, mirroring the opcp-serverless-brik block
             # above. Previously this insert shared a single transaction with the
             # long downstream seeding block (admin/demo creation, user_applications,
             # payment modes, configuration) that only commits at the END of
