@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implementation of the Serverless Docker Execution Service feature for the SoftFluid CloudStore Docker AI platform. This adds job submission, worker-based execution, container runtime abstraction, dashboard UI, and monitoring.
+Implementation of the Serverless Docker Execution Service feature for the OPCP CloudStore Docker AI platform. This adds job submission, worker-based execution, container runtime abstraction, dashboard UI, and monitoring.
 
 ## Task Dependency Graph
 

@@ -764,51 +764,16 @@ def install_as_systemctl_service():
     """Install SWAutomorph as systemd service"""
     import shutil
     
-    # Load PLTF_FOLDER from deploy.ini
-    pltf_folder = 'softfluid-ai-powered-store'
-    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'conf', 'deploy.ini')
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as f:
-                for line in f:
-                    if line.strip().startswith('PLTF_FOLDER'):
-                        pltf_folder = line.split('=', 1)[1].strip().strip("'\"")
-                        break
-        except Exception:
-            pass
-    
-    # Load LINUX_USER_INSTALLATION from deploy.ini
-    linux_user = 'softfluid'
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as f:
-                for line in f:
-                    if line.strip().startswith('LINUX_USER_INSTALLATION'):
-                        value = line.split('=', 1)[1].strip().strip("'\"")
-                        if value:
-                            linux_user = value
-                        break
-        except Exception:
-            pass
-    
-    base_path = f'/home/{linux_user}/{pltf_folder}'
+    # Resolve install identity and render the unit via the shared helper so the
+    # live install and the committed fallback artifact never diverge. User= and
+    # the /home/<user>/<folder> paths come from LINUX_USER_INSTALLATION and
+    # PLTF_FOLDER in conf/deploy.ini (canonical fallbacks psmc / opcp-explorer).
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from controlplan_service import resolve_service_identity, render_controlplan_unit
+
+    linux_user, pltf_folder = resolve_service_identity()
     systemd_path = '/etc/systemd/system/swautomorph-controlplan.service'
-    
-    # Generate service file content with correct paths
-    service_content = f"""[Unit]
-Description=SWAutomorph Control Plan
-After=network.target
-
-[Service]
-Type=forking
-ExecStart={base_path}/scripts/start_swautomorph_controlplan.sh
-ExecStop={base_path}/scripts/stop_swautomorph_controlplan.sh
-WorkingDirectory={base_path}
-User={linux_user}
-
-[Install]
-WantedBy=multi-user.target
-"""
+    service_content = render_controlplan_unit(linux_user, pltf_folder)
     
     try:
         click.echo('Installing systemd service...')
@@ -832,7 +797,7 @@ WantedBy=multi-user.target
         sys.exit(1)
     except PermissionError:
         click.echo('✗ Permission denied. Run with sudo:')
-        click.echo('  sudo python3 ./scripts/aipoweredstore_cli.py install-as-systemctl-service')
+        click.echo('  sudo python3 ./scripts/controller_cli.py install-as-systemctl-service')
         sys.exit(1)
     except Exception as e:
         click.echo(f'✗ Error: {str(e)}')

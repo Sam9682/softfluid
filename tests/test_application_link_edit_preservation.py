@@ -43,7 +43,7 @@ from src.routes.api_routes import api_bp
 from src.routes.main_routes import effective_app_url
 
 
-STALE_URL = 'https://softfluid.com:6109/'
+STALE_URL = 'https://opcp-psmc.com:6109/'
 
 
 class FakeDB:

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document describes the technical design for the Serverless Docker Execution Service feature. The architecture follows the existing SoftFluid CloudStore Docker AI patterns: Flask Blueprints for API routes, PostgreSQL via the shared `db_manager`, and systemd for service management. A new module `softfluid-serverless-brik` is introduced as the API layer, while a separate `serverless-worker.service` handles container execution.
+This document describes the technical design for the Serverless Docker Execution Service feature. The architecture follows the existing OPCP CloudStore Docker AI patterns: Flask Blueprints for API routes, PostgreSQL via the shared `db_manager`, and systemd for service management. A new module `opcp-serverless-brik` is introduced as the API layer, while a separate `serverless-worker.service` handles container execution.
 
 ## Architecture Overview
 
@@ -317,7 +317,7 @@ class PodmanRuntime(ContainerRuntime):
 
 ```ini
 [Unit]
-Description=SoftFluid Serverless Worker Service
+Description=OPCP Serverless Worker Service
 After=postgresql.service docker.service
 Requires=postgresql.service
 
@@ -325,12 +325,12 @@ Requires=postgresql.service
 Type=simple
 User=ubuntu
 Group=ubuntu
-WorkingDirectory=/home/ubuntu/softfluid-cloudstore-docker-ai
+WorkingDirectory=/home/ubuntu/opcp-cloudstore-docker-ai
 ExecStart=/usr/bin/python3 -m src.serverless.worker
 Restart=always
 RestartSec=5
 Environment=WORKER_ID=worker-001
-Environment=PYTHONPATH=/home/ubuntu/softfluid-cloudstore-docker-ai
+Environment=PYTHONPATH=/home/ubuntu/opcp-cloudstore-docker-ai
 
 [Install]
 WantedBy=multi-user.target
@@ -450,9 +450,9 @@ def cleanup_old_logs():
 
 Run via the worker service on a daily schedule or as a separate cron job.
 
-## Integration with softfluid-serverless-brik
+## Integration with opcp-serverless-brik
 
-The `softfluid-serverless-brik` module is cloned from GitHub and integrated as:
+The `opcp-serverless-brik` module is cloned from GitHub and integrated as:
 
 1. Git submodule or pip-installable package
 2. Provides the Flask Blueprint (`serverless_bp`) with all `/api/jobs` endpoints

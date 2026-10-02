@@ -1,6 +1,6 @@
 # List of Available Applications 📋
 
-This document provides a summary of the default applications available on the SoftFluid AiPoweredStore Container Serverless AI platform.
+This document provides a summary of the default applications available on the OPCP AiPoweredStore Container Serverless AI platform.
 
 These applications are defined in `conf/default_apps` and are automatically provisioned for users.
 
@@ -24,41 +24,41 @@ These applications are defined in `conf/default_apps` and are automatically prov
 
 ---
 
-### 3. softfluid-openstack-first-steps �
-- **Description**: SoftFluid Openstack First Steps
-- **Repository**: [github.com/Sam9682/softfluid-openstack-first-steps](https://github.com/Sam9682/softfluid-openstack-first-steps.git)
+### 3. opcp-openstack-first-steps �
+- **Description**: OPCP Openstack First Steps
+- **Repository**: [github.com/Sam9682/opcp-openstack-first-steps](https://github.com/Sam9682/opcp-openstack-first-steps.git)
 - **Repository Size**: ~10 MB
 - **Docker Build Time**: ~30s | Start: ~30s | Stop: ~10s
 
 ---
 
-### 4. softfluid-openstack-automation ⚙️
-- **Description**: SoftFluid Openstack Automation
-- **Repository**: [github.com/Sam9682/softfluid-openstack-automation](https://github.com/Sam9682/softfluid-openstack-automation.git)
+### 4. opcp-openstack-automation ⚙️
+- **Description**: OPCP Openstack Automation
+- **Repository**: [github.com/Sam9682/opcp-openstack-automation](https://github.com/Sam9682/opcp-openstack-automation.git)
 - **Repository Size**: ~10 MB
 - **Docker Build Time**: ~30s | Start: ~30s | Stop: ~10s
 
 ---
 
-### 5. softfluid-dashboard �
-- **Description**: SoftFluid softfluid Dashboard
-- **Repository**: [github.com/Sam9682/softfluid-dashboard](https://github.com/Sam9682/softfluid-dashboard.git)
+### 5. opcp-psmc-dashboard �
+- **Description**: OPCP PSMC Dashboard
+- **Repository**: [github.com/Sam9682/opcp-psmc-dashboard](https://github.com/Sam9682/opcp-psmc-dashboard.git)
 - **Repository Size**: ~10 MB
 - **Docker Build Time**: ~30s | Start: ~30s | Stop: ~10s
 
 ---
 
-### 6. softfluid-openstack-simulator 🧪
-- **Description**: SoftFluid Openstack Simulator
-- **Repository**: [github.com/Sam9682/softfluid-openstack-simulator](https://github.com/Sam9682/softfluid-openstack-simulator.git)
+### 6. opcp-openstack-simulator 🧪
+- **Description**: OPCP Openstack Simulator
+- **Repository**: [github.com/Sam9682/opcp-openstack-simulator](https://github.com/Sam9682/opcp-openstack-simulator.git)
 - **Repository Size**: ~10 MB
 - **Docker Build Time**: ~30s | Start: ~30s | Stop: ~10s
 
 ---
 
-### 7. softfluid-introduction �
-- **Description**: SoftFluid Introduction - non tech
-- **Repository**: [github.com/Sam9682/softfluid-introduction](https://github.com/Sam9682/softfluid-introduction.git)
+### 7. opcp-introduction �
+- **Description**: OPCP Introduction - non tech
+- **Repository**: [github.com/Sam9682/opcp-introduction](https://github.com/Sam9682/opcp-introduction.git)
 - **Repository Size**: ~10 MB
 - **Docker Build Time**: ~30s | Start: ~30s | Stop: ~10s
 

@@ -1,12 +1,12 @@
-# SoftFluid-Explorer — Présentation pour les Clients
+# @@PLATFORM_NAME@@ — Présentation pour les Clients
 
 ## Introduction
 
-Bienvenue dans SoftFluid-Explorer, votre plateforme centralisée de déploiement et de gestion d'applications. SoftFluid-Explorer vous permet de déployer, superviser et faire évoluer vos applications web en toute simplicité, grâce à une interface unique et des processus entièrement automatisés.
+Bienvenue dans @@PLATFORM_NAME@@, votre plateforme centralisée de déploiement et de gestion d'applications. @@PLATFORM_NAME@@ vous permet de déployer, superviser et faire évoluer vos applications web en toute simplicité, grâce à une interface unique et des processus entièrement automatisés.
 
 ## Objectif de la Solution
 
-SoftFluid-Explorer vous permet de :
+@@PLATFORM_NAME@@ vous permet de :
 - Déployer vos applications en quelques clics, sans expertise technique approfondie
 - Superviser l'état de vos services en temps réel depuis un tableau de bord centralisé
 - Automatiser la gestion du cycle de vie de vos applications (démarrage, arrêt, mise à jour)
@@ -82,7 +82,7 @@ Des agents IA intégrés vous accompagnent pour la modification de code (Develop
 
 ```
 ┌─────────────────────────────────────────────────┐
-│              SoftFluid-Explorer                       │
+│              @@PLATFORM_NAME@@                    │
 ├─────────────┬───────────────┬───────────────────┤
 │  Dashboard  │   API REST    │   CLI / MCP       │
 │    Web      │  + Streaming  │                   │
@@ -136,8 +136,8 @@ Hébergez les applications de vos clients sur une plateforme mutualisée avec is
 - API documentée avec exemples d'utilisation
 
 ### Contact
-Pour toute question ou démonstration, contactez notre équipe : **softfluid@ovhcloud.com**
+Pour toute question ou démonstration, contactez notre équipe : **psmc@ovhcloud.com**
 
 ---
 
-*SoftFluid-Explorer — Simplifiez le déploiement, concentrez-vous sur votre métier.*
+*@@PLATFORM_NAME@@ — Simplifiez le déploiement, concentrez-vous sur votre métier.*

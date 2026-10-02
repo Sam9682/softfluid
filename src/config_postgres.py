@@ -69,7 +69,9 @@ def get_platform_folder():
                     return line.split('=', 1)[1].strip().strip("'\"")
     except Exception as e:
         logger.error(f'Failed to read PLTF_FOLDER from deploy.ini: {e}')
-    return 'softfluid-ai-powered-store'
+    # Canonical fallback, matching gunicorn.conf.py, deployControlPlan.sh,
+    # start_app.sh and scripts/*.sh. Only used when deploy.ini is unreadable.
+    return 'opcp-explorer'
 
 # Domain name from deploy.ini
 def get_domain_name():
@@ -115,7 +117,7 @@ def get_linux_user():
                         return value
     except Exception as e:
         logger.error(f'Failed to read LINUX_USER_INSTALLATION from deploy.ini: {e}')
-    return 'softfluid'
+    return 'psmc'
 
 
 PLTF_NAME = get_platform_name()

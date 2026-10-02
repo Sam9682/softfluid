@@ -12,7 +12,7 @@ def _get_pltf_folder():
                     return line.split('=', 1)[1].strip().strip("'\"")
     except Exception:
         pass
-    return 'softfluid-explorer'
+    return 'opcp-explorer'
 
 PLTF_FOLDER = _get_pltf_folder()
 
@@ -28,7 +28,7 @@ def _get_linux_user():
                         return value
     except Exception:
         pass
-    return 'softfluid'
+    return 'psmc'
 
 LINUX_USER_INSTALLATION = _get_linux_user()
 

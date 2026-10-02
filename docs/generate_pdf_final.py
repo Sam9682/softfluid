@@ -1,17 +1,45 @@
 #!/usr/bin/env python3
 """
-Final script to generate softfluid-explorer-Marketing.pdf from softfluid-explorer.md content
-with complete Unicode character handling
+Generate <PLTF_NAME>-Marketing.pdf from the PLATFORM_OVERVIEW.md content
+with complete Unicode character handling.
+
+The platform display name and output filename are derived from PLTF_NAME in
+conf/deploy.ini (falling back to the canonical default) so the generated
+document carries the configured platform identity rather than a hardcoded one.
 """
 
+import os
+import re
 import sys
 from datetime import datetime
 from fpdf import FPDF
 
+
+def get_platform_name():
+    """Read PLTF_NAME from conf/deploy.ini, falling back to the canonical
+    default. Mirrors the tiny parser used across the platform's shell/py glue."""
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, 'conf', 'deploy.ini')
+        with open(config_path, 'r') as f:
+            for line in f:
+                if line.strip().startswith('PLTF_NAME'):
+                    return line.split('=', 1)[1].strip().strip("'\"")
+    except Exception:
+        pass
+    return 'OPCP-Explorer_AI_SharedGPU_Docker_Serverless'
+
+
+PLATFORM_NAME = get_platform_name()
+# A filesystem-safe slug of the display name for the output file.
+PLATFORM_SLUG = re.sub(r'[^A-Za-z0-9._-]+', '-', PLATFORM_NAME).strip('-') or 'platform'
+SOURCE_DOC = 'PLATFORM_OVERVIEW.md'
+
+
 class MarketingPDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 16)
-        self.cell(0, 10, 'SoftFluid AI-Powered Store - Marketing Document', 0, 1, 'C')
+        self.cell(0, 10, f'{PLATFORM_NAME} - Marketing Document', 0, 1, 'C')
         self.set_font('Arial', '', 10)
         self.cell(0, 10, f'Generated on {datetime.now().strftime("%Y-%m-%d")}', 0, 1, 'C')
         self.ln(10)
@@ -48,14 +76,18 @@ class MarketingPDF(FPDF):
             self.text_block(line)
 
 def generate_marketing_pdf():
-    # Read the softfluid-explorer.md content
+    # Read the platform overview content (resolved next to this script).
+    source_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), SOURCE_DOC)
     try:
-        with open('softfluid-explorer.md', 'r', encoding='utf-8') as f:
+        with open(source_path, 'r', encoding='utf-8') as f:
             content = f.read()
     except FileNotFoundError:
-        print("Error: softfluid-explorer.md not found in current directory")
+        print(f"Error: {SOURCE_DOC} not found at {source_path}")
         return False
-    
+
+    # Inject the configured platform name wherever the source uses the sentinel.
+    content = content.replace('@@PLATFORM_NAME@@', PLATFORM_NAME)
+
     # Replace all problematic Unicode characters that cause latin-1 encoding issues
     # These are emojis and special characters that can't be encoded in latin-1
     replacements = {
@@ -145,8 +177,10 @@ def generate_marketing_pdf():
         
         i += 1
     
-    # Save PDF
-    output_file = 'softfluid-explorer-Marketing.pdf'
+    # Save PDF next to this script, named after the configured platform.
+    output_file = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), f'{PLATFORM_SLUG}-Marketing.pdf'
+    )
     try:
         pdf.output(output_file)
         print(f"Successfully generated {output_file}")

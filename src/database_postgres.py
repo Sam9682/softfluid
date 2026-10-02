@@ -1,4 +1,4 @@
-"""PostgreSQL database manager for OPCP-Explorer"""
+"""PostgreSQL database manager for the platform."""
 import psycopg2
 import psycopg2.pool
 import threading

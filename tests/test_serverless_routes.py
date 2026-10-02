@@ -51,7 +51,7 @@ class TestSubmitJobAuth:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo", "hi"], "target_link": "http://softfluid.com:6132"}),
+            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo", "hi"], "target_link": "http://opcp-psmc.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -179,7 +179,7 @@ class TestSubmitJobTimeoutValidation:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "timeout": 1, "target_link": "http://softfluid.com:6132"}),
+            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "timeout": 1, "target_link": "http://opcp-psmc.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -192,7 +192,7 @@ class TestSubmitJobTimeoutValidation:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "timeout": 3600, "target_link": "http://softfluid.com:6132"}),
+            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "timeout": 3600, "target_link": "http://opcp-psmc.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -206,7 +206,7 @@ class TestSubmitJobRegistryWhitelist:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "evil-registry.com/malware:latest", "command": ["echo"], "target_link": "http://softfluid.com:6132"}),
+            data=json.dumps({"image": "evil-registry.com/malware:latest", "command": ["echo"], "target_link": "http://opcp-psmc.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 403
@@ -220,7 +220,7 @@ class TestSubmitJobRegistryWhitelist:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "python:3.11", "command": ["echo"], "target_link": "http://softfluid.com:6132"}),
+            data=json.dumps({"image": "python:3.11", "command": ["echo"], "target_link": "http://opcp-psmc.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -233,7 +233,7 @@ class TestSubmitJobRegistryWhitelist:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "ghcr.io/org/myapp:latest", "command": ["run"], "target_link": "http://softfluid.com:6132"}),
+            data=json.dumps({"image": "ghcr.io/org/myapp:latest", "command": ["run"], "target_link": "http://opcp-psmc.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 201
@@ -255,7 +255,7 @@ class TestSubmitJobSuccess:
                 "command": ["python", "script.py"],
                 "env": {"KEY": "value"},
                 "timeout": 600,
-                "target_link": "http://softfluid.com:6132",
+                "target_link": "http://opcp-psmc.com:6132",
             }),
             content_type='application/json',
         )
@@ -276,7 +276,7 @@ class TestSubmitJobSuccess:
                 "command": ["python", "main.py"],
                 "env": {"DB_HOST": "localhost"},
                 "timeout": 120,
-                "target_link": "http://softfluid.com:6134",
+                "target_link": "http://opcp-psmc.com:6134",
             }),
             content_type='application/json',
         )
@@ -293,7 +293,7 @@ class TestSubmitJobSuccess:
         assert json.loads(params[3]) == {"DB_HOST": "localhost"}  # env as JSON
         assert params[4] == 120  # timeout
         assert params[5] == "pending"  # status
-        assert params[6] == "http://softfluid.com:6134"  # target_link
+        assert params[6] == "http://opcp-psmc.com:6134"  # target_link
 
     @patch('src.routes.serverless_routes.db_manager')
     def test_uses_default_env_when_not_provided(self, mock_db, client, app):
@@ -303,7 +303,7 @@ class TestSubmitJobSuccess:
             sess['user_id'] = 1
         client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/alpine:latest", "command": ["echo", "hi"], "target_link": "http://softfluid.com:6132"}),
+            data=json.dumps({"image": "docker.io/alpine:latest", "command": ["echo", "hi"], "target_link": "http://opcp-psmc.com:6132"}),
             content_type='application/json',
         )
         call_args = mock_db.execute_query.call_args
@@ -318,7 +318,7 @@ class TestSubmitJobSuccess:
             sess['user_id'] = 1
         client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/alpine:latest", "command": ["echo"], "target_link": "http://softfluid.com:6132"}),
+            data=json.dumps({"image": "docker.io/alpine:latest", "command": ["echo"], "target_link": "http://opcp-psmc.com:6132"}),
             content_type='application/json',
         )
         call_args = mock_db.execute_query.call_args
@@ -332,7 +332,7 @@ class TestSubmitJobSuccess:
             sess['user_id'] = 1
         response = client.post(
             '/api/jobs',
-            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "target_link": "http://softfluid.com:6132"}),
+            data=json.dumps({"image": "docker.io/python:3.11", "command": ["echo"], "target_link": "http://opcp-psmc.com:6132"}),
             content_type='application/json',
         )
         assert response.status_code == 500
@@ -379,7 +379,7 @@ class TestGetJobStatusOwnership:
             None,  # completed_at
             None,  # exit_code
             'worker-001',  # worker_id
-            'http://softfluid.com:6132',  # target_link
+            'http://opcp-psmc.com:6132',  # target_link
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 1
@@ -403,7 +403,7 @@ class TestGetJobStatusOwnership:
             None,
             None,
             'worker-001',
-            'http://softfluid.com:6132',
+            'http://opcp-psmc.com:6132',
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 42
@@ -424,7 +424,7 @@ class TestGetJobStatusOwnership:
             datetime(2024, 1, 15, 10, 31, 0),
             0,
             'worker-001',
-            'http://softfluid.com:6132',
+            'http://opcp-psmc.com:6132',
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 1
@@ -450,7 +450,7 @@ class TestGetJobStatusResponse:
             None,
             None,
             'worker-001',
-            'http://softfluid.com:6132',
+            'http://opcp-psmc.com:6132',
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 42
@@ -480,7 +480,7 @@ class TestGetJobStatusResponse:
             datetime(2024, 1, 15, 10, 31, 0),
             0,
             'worker-001',
-            'http://softfluid.com:6132',
+            'http://opcp-psmc.com:6132',
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 42
@@ -535,7 +535,7 @@ class TestGetJobResultOwnership:
             99,  # user_id (different from session user)
             'completed',  # status
             0,  # exit_code
-            'http://softfluid.com:6132',  # target_link
+            'http://opcp-psmc.com:6132',  # target_link
         )
         with client.session_transaction() as sess:
             sess['user_id'] = 1
@@ -555,7 +555,7 @@ class TestGetJobResultOwnership:
                 99,  # user_id (different from session user)
                 'completed',  # status
                 0,  # exit_code
-                'http://softfluid.com:6132',  # target_link
+                'http://opcp-psmc.com:6132',  # target_link
             ),
             [],  # logs
             None,  # result
@@ -618,7 +618,7 @@ class TestGetJobResultResponse:
                 42,
                 'completed',
                 0,
-                'http://softfluid.com:6132',
+                'http://opcp-psmc.com:6132',
             ),
             # Second call: logs query
             [
@@ -649,7 +649,7 @@ class TestGetJobResultResponse:
                 42,
                 'failed',
                 1,
-                'http://softfluid.com:6132',
+                'http://opcp-psmc.com:6132',
             ),
             # Second call: logs query (empty)
             [],
@@ -675,7 +675,7 @@ class TestGetJobResultResponse:
                 42,
                 'timeout',
                 137,
-                'http://softfluid.com:6132',
+                'http://opcp-psmc.com:6132',
             ),
             [('stderr', 'Process killed due to timeout\n')],
             None,
@@ -699,7 +699,7 @@ class TestGetJobResultResponse:
                 42,
                 'cancelled',
                 None,
-                'http://softfluid.com:6132',
+                'http://opcp-psmc.com:6132',
             ),
             [],
             None,
@@ -1120,7 +1120,7 @@ class TestListJobsResponse:
                     None,
                     None,
                     'worker-001',
-                    'http://softfluid.com:6132',
+                    'http://opcp-psmc.com:6132',
                 ),
             ],  # jobs query
         ]
@@ -1140,7 +1140,7 @@ class TestListJobsResponse:
         assert job["completed_at"] is None
         assert job["exit_code"] is None
         assert job["worker_id"] == "worker-001"
-        assert job["target_link"] == "http://softfluid.com:6132"
+        assert job["target_link"] == "http://opcp-psmc.com:6132"
 
     @patch('src.routes.serverless_routes.db_manager')
     def test_returns_500_on_db_failure(self, mock_db, client, app):

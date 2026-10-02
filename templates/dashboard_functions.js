@@ -30,7 +30,7 @@ function stopServerlessAutoRefresh() {
 }
 
 /**
- * Load available softfluid-serverless-brik endpoint links into the target dropdown
+ * Load available opcp-serverless-brik endpoint links into the target dropdown
  * and display them in the links panel with availability status.
  * Preserves the currently selected value in the dropdown.
  */
@@ -59,7 +59,7 @@ async function loadServerlessLinks() {
 
         if (endpoints.length === 0 && links.length === 0) {
             if (select) select.innerHTML = '<option value="">-- No endpoints available --</option>';
-            if (linksContent) linksContent.innerHTML = '<p style="color:orange;">No softfluid-serverless-* endpoints are currently running. Please start an endpoint or contact your administrator.</p>';
+            if (linksContent) linksContent.innerHTML = '<p style="color:orange;">No opcp-serverless-* endpoints are currently running. Please start an endpoint or contact your administrator.</p>';
             return;
         }
 
@@ -79,7 +79,7 @@ async function loadServerlessLinks() {
 
             // Populate links panel with status badges (only running endpoints from backend)
             if (linksContent) {
-                let panelHtml = '<p style="font-size:12px; color:#666; margin:0 0 8px 0;"><em>Showing only running softfluid-serverless-* endpoints</em></p>';
+                let panelHtml = '<p style="font-size:12px; color:#666; margin:0 0 8px 0;"><em>Showing only running opcp-serverless-* endpoints</em></p>';
                 panelHtml += '<table style="width:100%; border-collapse:collapse;">';
                 panelHtml += '<tr style="border-bottom:1px solid #ddd;"><th style="text-align:left; padding:5px;">Endpoint</th><th style="text-align:left; padding:5px;">App</th><th style="text-align:left; padding:5px;">Owner</th><th style="text-align:left; padding:5px;">Status</th></tr>';
                 for (const ep of endpoints) {
@@ -91,7 +91,7 @@ async function loadServerlessLinks() {
                     } else {
                         statusBadge = '<span style="background:#6c757d; color:#fff; padding:2px 8px; border-radius:3px; font-size:12px;">❓ UNKNOWN</span>';
                     }
-                    const appName = ep.app_name || 'softfluid-serverless-brik';
+                    const appName = ep.app_name || 'opcp-serverless-brik';
                     panelHtml += '<tr style="border-bottom:1px solid #eee;">';
                     panelHtml += '<td style="padding:5px;"><a href="' + ep.url + '" target="_blank" style="color:#007bff; text-decoration:none;">' + ep.url + '</a></td>';
                     panelHtml += '<td style="padding:5px;">' + appName + '</td>';

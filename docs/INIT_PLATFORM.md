@@ -6,6 +6,8 @@ This document explains how to use `init_pltf.sh` to bootstrap a fresh server for
 
 `init_pltf.sh` is a one-shot provisioning script that installs all system dependencies, configures networking, sets up Docker, and prepares the repository for deployment. It is designed to run on a fresh **Ubuntu** server (typically an OVHcloud instance).
 
+Before any installation step, the script collects the **platform identity** so each customer deployment can be renamed in one place. When a terminal is attached it prompts for the values below (press Enter to accept the shown default); it then clones the repository and writes `PLTF_NAME` / `PLTF_FOLDER` into `conf/deploy.ini`.
+
 ## Prerequisites
 
 | Requirement |                              Details                       |
@@ -13,7 +15,7 @@ This document explains how to use `init_pltf.sh` to bootstrap a fresh server for
 | OS          | Ubuntu 22.04+ (tested on OVHcloud VPS/dedicated)           |
 | User        | A non-root user with `sudo` privileges                     |
 | Network     | Internet access (public interface)                         |
-| SSH key     | Configured for `git@github.com:Sam9682/softfluid-explorer.git` |
+| SSH key     | Configured for `git@github.com:Sam9682/opcp-explorer.git` |
 | GPU (optional) | NVIDIA H100, A100, or A30 for MIG shared GPU features   |
 
 ## What the script installs
@@ -36,10 +38,33 @@ chmod +x init_pltf.sh
 ./init_pltf.sh
 ```
 
-The script runs non-interactively. Each step prints a colored status:
+The script first prompts for the platform identity, then runs the install steps. Each step prints a colored status:
 - 🟢 `[OK]` — step completed successfully
 - 🔴 `[ERROR]` — step failed
 - 🟡 `[WARNING]` — non-critical issue or manual action needed
+
+### Platform identity prompts
+
+| Prompt | Default | Written to |
+|--------|---------|------------|
+| Platform folder slug (`PLTF_FOLDER`) | `opcp-explorer` | install dir, container prefixes, `conf/deploy.ini` |
+| Platform display name (`PLTF_NAME`) | `OPCP-Explorer_AI_SharedGPU_Docker_Serverless` | web UI, generated docs, `conf/deploy.ini` |
+| Repository clone URL (`REPO_URL`) | `https://github.com/Sam9682/opcp-explorer.git` | the clone source |
+| Shared submodule URL (`SUBMODULE_URL`) | `git@github.com:Sam9682/ai-swautomorph--shared.git` | the `shared` submodule source |
+
+The folder slug is validated (lowercase letters, digits and hyphens only); an invalid value is re-prompted, or aborts the run if it was pre-set via the environment.
+
+### Non-interactive / CI runs
+
+Pre-set any of the four values as environment variables to skip the matching prompt. With no TTY and no overrides, the defaults above are used:
+
+```bash
+PLTF_FOLDER=acme-cloud \
+PLTF_NAME="Acme Cloud Platform" \
+REPO_URL=https://github.com/your-org/your-repo.git \
+SUBMODULE_URL=git@github.com:your-org/shared.git \
+./init_pltf.sh
+```
 
 ## Step-by-step breakdown
 
@@ -93,7 +118,7 @@ Creates `~/.aws/config` and `~/.aws/credentials` with a placeholder profile `OVH
 
 ### 8. Repository clone
 
-Clones the `softfluid-explorer` repository (local folder name is configured by `PLTF_FOLDER` in `conf/deploy.ini`) and initializes submodules.
+Clones the repository from the chosen `REPO_URL` into the chosen `PLTF_FOLDER`, adds the `shared` submodule from `SUBMODULE_URL`, and initializes submodules. After the clone, `PLTF_NAME` and `PLTF_FOLDER` are written into `conf/deploy.ini`.
 
 ### 9. Python virtual environment
 
@@ -107,13 +132,14 @@ Creates the `logs/` directory and makes `setup_modsecurity_config.sh` executable
 
 After the script completes, you **must** perform these manual steps:
 
-### Configure the platform identity
+### Review the platform identity
 
-Edit `./conf/deploy.ini`:
+`PLTF_NAME` and `PLTF_FOLDER` were already written to `./conf/deploy.ini` from your answers to the init prompts. Review the remaining settings there (and adjust `PLTF_NAME` / `PLTF_FOLDER` if needed):
 
 ```ini
 DOMAIN=yourdomain.com
 PLTF_NAME=Your Platform Name
+PLTF_FOLDER=your-platform
 
 # Optional: secondary domains
 SECONDARY_DOMAINS=other.com:other.com www.other.com:https://yourdomain.com:6137

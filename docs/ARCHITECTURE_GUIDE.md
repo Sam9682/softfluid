@@ -54,7 +54,7 @@ AI-SwAutoMorph is a **centralized application deployment and management platform
 │   ├── 🗄️ DATABASE_IMPROVEMENTS.md  # Database architecture
 │   └── 👥 USER_GUIDE.md             # AI agent usage guide
 ├── 📁 scripts/                      # CLI tools and utilities
-│   ├── 💻 aipoweredstore_cli.py                    # Command-line interface
+│   ├── 💻 controller_cli.py                    # Command-line interface
 │   └── 🔌 mcp_server.py             # Model Context Protocol server
 ├── 📁 migration/                    # Database migration scripts
 │   ├── add_serverless_jobs.sql      # Serverless job queue schema
@@ -315,7 +315,7 @@ AI-SwAutoMorph est une **plateforme centralisée de déploiement et de gestion d
 │   ├── 🗄️ DATABASE_IMPROVEMENTS.md  # Architecture de base de données
 │   └── 👥 USER_GUIDE.md             # Guide d'utilisation des agents IA
 ├── 📁 scripts/                      # Outils CLI et utilitaires
-│   ├── 💻 aipoweredstore_cli.py                    # Interface en ligne de commande
+│   ├── 💻 controller_cli.py                    # Interface en ligne de commande
 │   └── 🔌 mcp_server.py             # Serveur Model Context Protocol
 ├── 📁 migration/                    # Database migration scripts
 │   ├── add_serverless_jobs.sql      # Serverless job queue schema

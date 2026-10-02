@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# SoftFluid-Explorer Production Deployment Script
-# Organized with functions for better maintainability
+# Platform Production Deployment Script
+# Organized with functions for better maintainability.
+# The platform display name is read from PLTF_NAME in conf/deploy.ini.
 
 set -e
 
@@ -67,12 +68,14 @@ WARN="${YELLOW}[WARN]${NC}"
 INFO="${BLUE}[INFO]${NC}"
 
 # Global Variables (with fallback defaults)
-NAME_OF_APPLICATION=${NAME_OF_APPLICATION:-"softfluid-explorer"}
+NAME_OF_APPLICATION=${NAME_OF_APPLICATION:-"opcp-explorer"}
 APPLICATION_IDENTITY_NUMBER=${APPLICATION_IDENTITY_NUMBER:-0}
 RANGE_START_CONTROLPLAN=${RANGE_START_CONTROLPLAN:-80}
 RANGE_RESERVED_CONTROLPLAN=${RANGE_RESERVED_CONTROLPLAN:-0}
-S3_BUCKET_NAME=${S3_BUCKET_NAME:-"softfluid-s3"}
-PLTF_FOLDER=${PLTF_FOLDER:-"softfluid-explorer"}
+S3_BUCKET_NAME=${S3_BUCKET_NAME:-"opcp-s3"}
+PLTF_FOLDER=${PLTF_FOLDER:-"opcp-explorer"}
+# Display name shown in banners/usage; read from PLTF_NAME in deploy.ini.
+PLTF_NAME=${PLTF_NAME:-"OPCP-Explorer_AI_SharedGPU_Docker_Serverless"}
 LINUX_USER_INSTALLATION=${LINUX_USER_INSTALLATION:-"ubuntu"}
 
 # Global Parameters (command line args override config)
@@ -84,13 +87,13 @@ USER_EMAIL=${5:-${DEFAULT_USER_EMAIL:-"admin@softfluid.fr"}}
 DESCRIPTION=${6:-${DEFAULT_DESCRIPTION:-"Basic Admin user for Control Plan"}}
 
 # Configuration (loaded from deploy.ini with fallback defaults)
-DOMAIN=${DOMAIN:-"softfluid.com"}
-EMAIL=${EMAIL:-"admin@softfluid.com"}
+DOMAIN=${DOMAIN:-"opcp-psmc.com"}
+EMAIL=${EMAIL:-"admin@opcp-psmc.com"}
 ENV_FILE=${ENV_FILE:-".env.prod"}
 GITEA_VERSION=${GITEA_VERSION:-"1.21.3"}
 GITEA_ADMIN_USER=${GITEA_ADMIN_USER:-"gitadmin"}
 GITEA_ADMIN_PASSWORD=${GITEA_ADMIN_PASSWORD:-"password"}
-GITEA_ADMIN_EMAIL=${GITEA_ADMIN_EMAIL:-"admin@softfluid.com"}
+GITEA_ADMIN_EMAIL=${GITEA_ADMIN_EMAIL:-"admin@opcp-psmc.com"}
 
 # Normalize LOCAL_MODE parameter (handle --locally and --docker)
 case "$LOCAL_MODE" in
@@ -481,8 +484,8 @@ recover_database() {
 import os
 from simple_term_menu import TerminalMenu
 
-s3_bucket = os.environ.get('S3_BUCKET_NAME', 'softfluid-s3')
-app_name = os.environ.get('NAME_OF_APPLICATION', 'softfluid-explorer')
+s3_bucket = os.environ.get('S3_BUCKET_NAME', 'opcp-s3')
+app_name = os.environ.get('NAME_OF_APPLICATION', 'opcp-explorer')
 options = ["Local backups (./softfluid/db/backup)", f"Remote S3 backups (s3://{s3_bucket}/{app_name}/db/backup)"]
 terminal_menu = TerminalMenu(
     options,
@@ -1287,6 +1290,9 @@ start_local_deployment() {
     configure_nginx
     configure_firewall
 
+    # Sync nginx locations as the final startup step (runs on top of reloaded nginx)
+    sync_nginx_locations
+
     echo "✅ Local deployment completed successfully!"
 }
 
@@ -1533,6 +1539,9 @@ start_docker_deployment() {
     fi
 
     echo "  ✅ Docker services started"
+
+    # Sync nginx locations as the final startup step (runs once services are up)
+    sync_nginx_locations
 }
 
 install_python_dependencies() {
@@ -1607,7 +1616,7 @@ start_flask_application() {
         export USE_POSTGRES=true
         export PYTHONPATH=/home/${LINUX_USER_INSTALLATION}/${NAME_OF_APPLICATION}
 
-        if python3 ./scripts/aipoweredstore_cli.py init-db; then
+        if python3 ./scripts/controller_cli.py init-db; then
             echo "  ✅ Database initialized successfully"
         else
             echo "  ⚠️ Database initialization failed - continuing anyway"
@@ -1824,6 +1833,30 @@ configure_firewall() {
     sudo ufw allow 3000/tcp
     sudo ufw allow 53/tcp
     sudo ufw --force enable
+}
+
+# Sync nginx location config from the database (final startup step).
+# Runs with the activated .venv Python so src.nginx_manager and
+# src.database_postgres import correctly. A sync failure is non-fatal:
+# it warns and lets the deploy complete (guarded against set -e).
+sync_nginx_locations() {
+    echo "🔁 Syncing nginx locations from database..."
+    if [ ! -f "./scripts/sync_nginx_locations.py" ]; then
+        echo -e "  $WARN sync script not found - skipping nginx location sync"
+        return 0
+    fi
+    # Prefer the venv python; fall back to python3. Capture the exit code
+    # explicitly so a non-zero sync does not trip `set -e`.
+    local sync_python="python3"
+    if [ -x ".venv/bin/python" ]; then
+        sync_python=".venv/bin/python"
+    fi
+    if "$sync_python" ./scripts/sync_nginx_locations.py; then
+        echo -e "  $OK Nginx locations synced from database"
+    else
+        echo -e "  $WARN Nginx location sync failed (exit non-zero) - continuing deploy"
+    fi
+    return 0
 }
 
 cleanup_docker() {
@@ -2076,7 +2109,7 @@ EOF
 
 # Show usage information
 help() {
-    echo "🚀 SoftFluid-Explorer Deployment Script v${VERSION}"
+    echo "🚀 ${PLTF_NAME} Deployment Script v${VERSION}"
     echo "Usage: $0 [COMMAND] [MODE] [USER_ID] [USER_NAME] [USER_EMAIL] [DESCRIPTION] [OPTIONS]"
     echo ""
     echo "COMMANDS:"
@@ -2210,8 +2243,8 @@ help() {
     echo "  • Docker Containers (optional)"
     echo ""
     echo "ACCESS URLS:"
-    echo "  • Main App: https://www.softfluid.com"
-    echo "  • Gitea:    https://www.softfluid.com/gitea"
+    echo "  • Main App: https://www.opcp-psmc.com"
+    echo "  • Gitea:    https://www.opcp-psmc.com/gitea"
     echo "  • Local:    https://localhost (with SSL certificates)"
 }
 
@@ -2308,7 +2341,7 @@ main() {
             exit 0
             ;;
         "version"|"--version"|"-v")
-            echo "SoftFluid-Explorer v${VERSION}"
+            echo "${PLTF_NAME} v${VERSION}"
             exit 0
             ;;
         *)

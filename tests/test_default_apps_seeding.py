@@ -5,13 +5,13 @@ Spec: .kiro/specs/default-apps-seeding-only-one-app
 Bug summary
 -----------
 On the first run of ``init_db()`` (``src/database_postgres.py``) against an
-empty PostgreSQL database, only ONE application (``softfluid-serverless-brik``) ends
+empty PostgreSQL database, only ONE application (``opcp-serverless-brik``) ends
 up in the ``applications`` table, even though ``conf/default_apps`` lists 11
 applications that should ALL be created.
 
 Root cause: transaction atomicity. ``db_manager.get_db_connection()`` sets
 ``autocommit = False`` and rolls back on any exception. The
-``softfluid-serverless-brik`` block commits its single row in its own try/except.
+``opcp-serverless-brik`` block commits its single row in its own try/except.
 The default-apps ``executemany(... ON CONFLICT (name) DO NOTHING ...)`` that
 follows is NOT committed on its own -- it shares one transaction with a long
 downstream block (default costs, server insert, admin/demo user creation,
@@ -121,7 +121,7 @@ class FakeCursor:
             self._last_result = None  # fetchone() -> None (schema missing)
             return
 
-        # softfluid-serverless-brik existence check -> not present.
+        # opcp-serverless-brik existence check -> not present.
         if "from applications where name" in s:
             self._last_result = None
             return
@@ -239,7 +239,7 @@ class TestDefaultAppsConfig:
     def test_config_declares_eleven_distinct_apps(self):
         names = _distinct_default_app_names()
         assert len(names) == 11, f"expected 11 distinct default apps, got {sorted(names)}"
-        assert "softfluid-serverless-brik" in names
+        assert "opcp-serverless-brik" in names
 
 
 class TestDefaultAppsSurviveDownstreamFailure:
@@ -301,7 +301,7 @@ class TestDefaultAppsSurviveDownstreamFailure:
         assert commit_idx < fail_idx, (
             "default apps were not committed before the downstream failure; a "
             "rollback would discard them, leaving only the pre-committed "
-            "softfluid-serverless-brik row (bug present)"
+            "opcp-serverless-brik row (bug present)"
         )
 
     def test_default_costs_committed_with_apps_before_failure(self):

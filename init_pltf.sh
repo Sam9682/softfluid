@@ -24,8 +24,108 @@ print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
+# Default platform identity values. Each can be pre-set via environment
+# variables for non-interactive/CI runs; otherwise the user is prompted
+# (when a TTY is attached) and may accept these defaults by pressing Enter.
+DEFAULT_PLTF_FOLDER="opcp-explorer"
+DEFAULT_PLTF_NAME="OPCP-Explorer_AI_SharedGPU_Docker_Serverless"
+DEFAULT_REPO_URL="https://github.com/Sam9682/opcp-explorer.git"
+DEFAULT_SUBMODULE_URL="git@github.com:Sam9682/ai-swautomorph--shared.git"
+
+# Validate a platform folder slug: lowercase letters, digits and hyphens,
+# must start with a letter or digit, non-empty.
+is_valid_slug() {
+    local value="$1"
+    [[ "$value" =~ ^[a-z0-9][a-z0-9-]*$ ]]
+}
+
+# Collect the platform identity (folder slug, display name, repo URL and
+# shared submodule URL) BEFORE the repository is cloned. Values already set
+# in the environment are honored as-is; otherwise, when a TTY is attached,
+# the user is prompted with the defaults. On a non-interactive run with no
+# environment override, the defaults are used.
+prompt_platform_identity() {
+    # Platform folder slug (with validation + re-prompt loop).
+    if [ -z "${PLTF_FOLDER:-}" ]; then
+        if [ -t 0 ]; then
+            while true; do
+                read -r -p "Platform folder slug [${DEFAULT_PLTF_FOLDER}]: " _input
+                PLTF_FOLDER="${_input:-$DEFAULT_PLTF_FOLDER}"
+                if is_valid_slug "${PLTF_FOLDER}"; then
+                    break
+                fi
+                print_error "Invalid slug '${PLTF_FOLDER}'. Use lowercase letters, digits and hyphens only (e.g. my-platform)."
+                PLTF_FOLDER=""
+            done
+        else
+            PLTF_FOLDER="${DEFAULT_PLTF_FOLDER}"
+        fi
+    fi
+    if ! is_valid_slug "${PLTF_FOLDER}"; then
+        print_error "PLTF_FOLDER '${PLTF_FOLDER}' is not a valid slug (lowercase letters, digits and hyphens only). Aborting."
+        exit 1
+    fi
+
+    # Display name.
+    if [ -z "${PLTF_NAME:-}" ]; then
+        if [ -t 0 ]; then
+            read -r -p "Platform display name [${DEFAULT_PLTF_NAME}]: " _input
+            PLTF_NAME="${_input:-$DEFAULT_PLTF_NAME}"
+        else
+            PLTF_NAME="${DEFAULT_PLTF_NAME}"
+        fi
+    fi
+
+    # Main repository clone URL.
+    if [ -z "${REPO_URL:-}" ]; then
+        if [ -t 0 ]; then
+            read -r -p "Repository clone URL [${DEFAULT_REPO_URL}]: " _input
+            REPO_URL="${_input:-$DEFAULT_REPO_URL}"
+        else
+            REPO_URL="${DEFAULT_REPO_URL}"
+        fi
+    fi
+
+    # Shared submodule URL.
+    if [ -z "${SUBMODULE_URL:-}" ]; then
+        if [ -t 0 ]; then
+            read -r -p "Shared submodule URL [${DEFAULT_SUBMODULE_URL}]: " _input
+            SUBMODULE_URL="${_input:-$DEFAULT_SUBMODULE_URL}"
+        else
+            SUBMODULE_URL="${DEFAULT_SUBMODULE_URL}"
+        fi
+    fi
+
+    export PLTF_FOLDER PLTF_NAME REPO_URL SUBMODULE_URL
+}
+
+# Rewrite a key=value pair in an INI file in place, preserving other keys.
+# Appends the key if the file or key does not yet exist.
+set_ini_value() {
+    local file="$1" key="$2" value="$3"
+    if [ -f "$file" ] && grep -qE "^${key}=" "$file"; then
+        local escaped
+        escaped="${value//|/\\|}"
+        sed -i "s|^${key}=.*|${key}=${escaped}|" "$file"
+    else
+        mkdir -p "$(dirname "$file")"
+        touch "$file"
+        echo "${key}=${value}" >> "$file"
+    fi
+}
+
+# When this script is sourced (e.g. by the test harness) rather than executed,
+# only the function definitions above are loaded; the installer body below is
+# skipped. ${BASH_SOURCE[0]} != $0 indicates a sourced context.
+if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+    return 0 2>/dev/null || true
+fi
+
+# Collect platform identity before any installation / clone step.
+prompt_platform_identity
+
 echo -e "${BLUE}+==========================================+${NC}"
-echo -e "${BLUE}|${NC}   ai-powered-store Platform Setup    ${BLUE}|${NC}"
+echo -e "${BLUE}${NC}      ${PLTF_NAME} Platform Setup    ${BLUE}|${NC}"
 echo -e "${BLUE}+==========================================+${NC}"
 echo ""
 
@@ -195,13 +295,21 @@ export AWS_ENDPOINT_URL_S3=https://s3.gra.io.cloud.ovh.net/
 print_success "AWS credentials configured"
 
 # Clone repository
-PLTF_FOLDER="${PLTF_FOLDER:-opcp-explorer}"
-print_step "Cloning OPCP-Explorer repository..."
-git clone https://github.com/Sam9682/opcp-explorer.git ${PLTF_FOLDER} > /dev/null 2>&1
-cd ${PLTF_FOLDER}
-git submodule add git@github.com:Sam9682/ai-swautomorph--shared.git shared > /dev/null 2>&1
+print_step "Cloning ${PLTF_NAME} repository..."
+git clone "${REPO_URL}" "${PLTF_FOLDER}" > /dev/null 2>&1
+cd "${PLTF_FOLDER}"
+git submodule add "${SUBMODULE_URL}" shared > /dev/null 2>&1
 git submodule update --init --recursive > /dev/null 2>&1
 print_success "Repository cloned"
+
+# Persist the collected platform identity into conf/deploy.ini so every
+# runtime consumer (config_postgres.py, gunicorn.conf.py, docker-compose.yml,
+# scripts/*.sh) resolves the same values. Existing keys are rewritten in
+# place; other keys (DOMAIN, VERSION, ...) are preserved.
+print_step "Writing platform identity to conf/deploy.ini..."
+set_ini_value "conf/deploy.ini" "PLTF_NAME" "${PLTF_NAME}"
+set_ini_value "conf/deploy.ini" "PLTF_FOLDER" "${PLTF_FOLDER}"
+print_success "Platform identity written to conf/deploy.ini"
 
 # Setup Python environment
 print_step "Setting up Python virtual environment..."
@@ -224,7 +332,8 @@ echo ""
 echo -e "${GREEN}[OK] Installation completed successfully!${NC}"
 echo ""
 print_warning "Don't forget to :"
-print_warning "     - modify ./conf/deploy.ini with your platform settings, PLTF_NAME, PLTF_FOLDER and DOMAIN values"
+print_warning "     - PLTF_NAME and PLTF_FOLDER are already set in ./conf/deploy.ini; review DOMAIN and other settings there"
 print_warning "     - add ssl certificate in ~/${PLTF_FOLDER}/ssl/fullchain_domain.crt for nginx https"
 print_warning "     - add ssl private key in ~/${PLTF_FOLDER}/ssl/privateKey_domain.key for nginx https"
 print_warning "     - enter aws_access_key_id & aws_secret_access_key in ~/.aws/credentials for s3 synchronization"
+print_warning "     - the default user is admin/password"

@@ -5,7 +5,7 @@ the handler `api_application_actions` updates only `applications.url` and never 
 the per-user `user_applications.url` rows. Because the dashboard / "Authorized
 Applications" page fall back to `user_applications.url` (via `effective_app_url`) when
 `applications.url` is empty, the edited link never appears and the stale link
-(e.g. https://softfluid.com:6109/) keeps being displayed.
+(e.g. https://opcp-psmc.com:6109/) keeps being displayed.
 
 This is a BUG CONDITION EXPLORATION test. It is EXPECTED TO FAIL on the UNFIXED code.
 A failure CONFIRMS the bug exists. It encodes the expected behavior, so it will pass
@@ -32,7 +32,7 @@ from src.routes.api_routes import api_bp
 from src.routes.main_routes import effective_app_url
 
 
-STALE_URL = 'https://softfluid.com:6109/'
+STALE_URL = 'https://opcp-psmc.com:6109/'
 
 
 class FakeDB:

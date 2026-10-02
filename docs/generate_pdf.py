@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Generate a marketing-style PDF from the SoftFluid-Explorer content.
+"""Generate a marketing-style PDF from the platform overview content.
 
 Targeted at non-technical decision makers to explain the benefits
-of using SoftFluid-Explorer for application deployment and management.
+of using the platform for application deployment and management.
+
+The platform display name and output filename are derived from PLTF_NAME in
+conf/deploy.ini (falling back to the canonical default) so the generated
+document carries the configured platform identity rather than a hardcoded one.
 
 Usage:
     python3 docs/generate_pdf.py
@@ -13,8 +17,31 @@ Requirements:
 
 from weasyprint import HTML
 import os
+import re
 
-html_content = """
+
+def get_platform_name():
+    """Read PLTF_NAME from conf/deploy.ini, falling back to the canonical
+    default. Mirrors the tiny parser used across the platform's shell/py glue."""
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(base_dir, 'conf', 'deploy.ini')
+        with open(config_path, 'r') as f:
+            for line in f:
+                if line.strip().startswith('PLTF_NAME'):
+                    return line.split('=', 1)[1].strip().strip("'\"")
+    except Exception:
+        pass
+    return 'OPCP-Explorer_AI_SharedGPU_Docker_Serverless'
+
+
+PLATFORM_NAME = get_platform_name()
+PLATFORM_SLUG = re.sub(r'[^A-Za-z0-9._-]+', '-', PLATFORM_NAME).strip('-') or 'platform'
+
+# The platform display name is injected by replacing the @@PLATFORM_NAME@@
+# sentinel below. A sentinel (rather than str.format) avoids having to escape
+# the many literal braces in the embedded CSS.
+html_template = """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -378,18 +405,18 @@ p {
 
 <!-- COVER PAGE -->
 <div class="cover">
-    <h1>SoftFluid-Explorer</h1>
+    <h1>@@PLATFORM_NAME@@</h1>
     <div class="subtitle">Votre plateforme centralisée de déploiement<br>et de gestion d'applications</div>
     <div class="tagline">Déployez, supervisez et faites évoluer vos applications web<br>en toute simplicité, grâce à une interface unique<br>et des processus entièrement automatisés.</div>
-    <div class="brand">softfluid OVHcloud</div>
-    <div class="version">softfluid.com</div>
+    <div class="brand">PSMC OVHcloud</div>
+    <div class="version">opcp-psmc.com</div>
 </div>
 
 <!-- PAGE 2: VALUE PROPOSITION -->
 <div class="page">
     <h2>Simplifiez votre infrastructure applicative</h2>
     <p class="intro-text">
-        SoftFluid-Explorer est une plateforme tout-en-un qui vous libère des complexités
+        @@PLATFORM_NAME@@ est une plateforme tout-en-un qui vous libère des complexités
         de l'hébergement et du déploiement. Que vous soyez une startup, une PME ou une équipe
         en croissance, la plateforme s'adapte à vos besoins et vous permet de vous concentrer
         sur ce qui compte : votre métier.
@@ -577,7 +604,7 @@ p {
     <h2>Prêt à simplifier votre infrastructure ?</h2>
 
     <p class="intro-text">
-        SoftFluid-Explorer est conçu pour vous faire gagner du temps, réduire vos coûts
+        @@PLATFORM_NAME@@ est conçu pour vous faire gagner du temps, réduire vos coûts
         et sécuriser vos applications. Rejoignez les équipes qui ont déjà choisi
         de se concentrer sur leur métier plutôt que sur l'infrastructure.
     </p>
@@ -593,11 +620,11 @@ p {
     <div class="cta">
         <h3>Contactez-nous pour une démonstration</h3>
         <p>Notre équipe est disponible pour vous présenter la plateforme<br>et répondre à toutes vos questions.</p>
-        <div class="contact">softfluid@ovhcloud.com</div>
+        <div class="contact">psmc@ovhcloud.com</div>
     </div>
 
     <div class="footer">
-        <p>© softfluid OVHcloud — SoftFluid-Explorer • softfluid.com</p>
+        <p>© PSMC OVHcloud — @@PLATFORM_NAME@@ • opcp-psmc.com</p>
         <p style="font-size:10px; color:#bbb;">Simplifiez le déploiement, concentrez-vous sur votre métier.</p>
     </div>
 </div>
@@ -606,10 +633,15 @@ p {
 </html>
 """
 
+def build_html():
+    """Return the marketing HTML with the configured platform name injected."""
+    return html_template.replace("@@PLATFORM_NAME@@", PLATFORM_NAME)
+
+
 if __name__ == "__main__":
     # Determine output path relative to this script's location
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    output_path = os.path.join(script_dir, "SoftFluid-Explorer-Marketing.pdf")
+    output_path = os.path.join(script_dir, f"{PLATFORM_SLUG}-Marketing.pdf")
 
-    HTML(string=html_content).write_pdf(output_path)
+    HTML(string=build_html()).write_pdf(output_path)
     print(f"PDF generated: {output_path}")

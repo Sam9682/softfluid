@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Reset PostgreSQL database for softfluid-explorer
+# Reset the platform PostgreSQL database
 # This script drops and recreates the database with initial schema
 
-echo "Resetting PostgreSQL database for softfluid-explorer..."
+echo "Resetting the platform PostgreSQL database..."
 
 # Set database connection parameters
 DB_NAME="ai_swautomorph"

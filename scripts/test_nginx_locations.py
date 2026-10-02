@@ -19,7 +19,10 @@ def test_generate_location():
     block = generate_location_block(2, "ai-staticwebsite", "https://www.swautomorph.com:6217", "https://www.swautomorph.com:6217")
     
     assert "/2/ai-staticwebsite" in block
-    assert "https://www.swautomorph.com:6217" in block
+    # nginx must proxy to the HTTP endpoint (HTTP scheme + HTTP port, the first
+    # port of the pair), not the stored HTTPS URL (https://...:6217).
+    assert "http://www.swautomorph.com:6216" in block
+    assert "https://www.swautomorph.com:6217" not in block
     assert "proxy_pass" in block
     assert "rewrite" in block
     

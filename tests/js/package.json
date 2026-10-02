@@ -1,5 +1,5 @@
 {
-  "name": "softfluid-explorer-js-tests",
+  "name": "opcp-explorer-js-tests",
   "version": "1.0.0",
   "private": true,
   "description": "jsdom-based test harness for the dashboard client-side JavaScript (sortable table headers feature).",
