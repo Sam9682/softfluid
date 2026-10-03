@@ -58,7 +58,7 @@ The platform automatically selects the optimal server based on:
 
 #### Enhanced Directory Structure
 ```
-/home/ubuntu/deployments/
+/home/<LINUX_USER_INSTALLATION>/deployments/
 ├── username1/
 │   ├── ai-haccp/
 │   │   ├── deployApp.sh              # Application deployment script
@@ -78,10 +78,13 @@ The platform automatically selects the optimal server based on:
         └── [application files]
 ```
 
+
+> The install root is configurable, not hardcoded. `LINUX_USER_INSTALLATION` and `PLTF_FOLDER` are read from `conf/deploy.ini`, so paths resolve to `/home/<LINUX_USER_INSTALLATION>/...` for your deployment (the example uses `ubuntu`).
+
 #### Enhanced Deployment Process
 
 1. **Intelligent Server Allocation**: System selects optimal server based on capacity, performance, and geographic location
-2. **Secure Clone**: Downloads the git repository to `/home/ubuntu/deployments/{username}/{app-name}/` with input validation
+2. **Secure Clone**: Downloads the git repository to `/home/<LINUX_USER_INSTALLATION>/deployments/{username}/{app-name}/` with input validation
 3. **SSL Certificate Sync**: Automatically copies SSL certificates to deployment directory with proper permissions
 4. **Context-Aware Deploy Commands**: Runs `deployApp.sh` with user context (user_id, name, email) and environment variables
 5. **Real-time Monitoring**: Tracks deployment status with streaming updates and comprehensive logging
@@ -106,10 +109,10 @@ The platform automatically selects the optimal server based on:
    - Comprehensive billing tracking automatically starts with precise timestamps
    - Port allocation configured in `conf/deploy.ini`:
      ```ini
-     [PORTS]
-     RANGE_START = 6000
-     RANGE_RESERVED = 100
-     RANGE_PORTS_PER_APPLICATION = 12
+     # Flat keys in conf/deploy.ini (no section header).
+     RANGE_START=6000
+     RANGE_RESERVED=100
+     RANGE_PORTS_PER_APPLICATION=12
      ```
    - Port calculation: `HTTP_PORT = RANGE_START + user_id * RANGE_RESERVED + app_id * RANGE_PORTS_PER_APPLICATION`
    - Each application is allocated 12 consecutive ports (6 HTTP + 6 HTTPS)
@@ -207,7 +210,7 @@ Content-Type: application/json
 {
   "message": "Add a comprehensive health check endpoint with monitoring and alerting",
   "application_name": "AI HACCP",
-  "application_folder": "/home/ubuntu/deployments/user/ai-haccp",
+  "application_folder": "/home/<LINUX_USER_INSTALLATION>/deployments/user/ai-haccp",
   "action_operation": "MODIFY_CODE"
 }
 
@@ -217,7 +220,7 @@ Content-Type: application/json
 {
   "message": "[START] Start the application with full monitoring and logging",
   "application_name": "AI HACCP",
-  "application_folder": "/home/ubuntu/deployments/user/ai-haccp",
+  "application_folder": "/home/<LINUX_USER_INSTALLATION>/deployments/user/ai-haccp",
   "action_operation": "START"
 }
 
@@ -275,10 +278,11 @@ PUT /api/billing/invoices/{invoice_id}/pay
 Application port allocation is configured in `conf/deploy.ini`:
 
 ```ini
-[PORTS]
-RANGE_START = 6000
-RANGE_RESERVED = 100
-RANGE_PORTS_PER_APPLICATION = 12
+# Flat keys in conf/deploy.ini (no section header). RANGE_START and
+# RANGE_RESERVED default to 6000 and 100 in code if not present.
+RANGE_START=6000
+RANGE_RESERVED=100
+RANGE_PORTS_PER_APPLICATION=12
 ```
 
 **Port Allocation Formula:**
@@ -473,7 +477,7 @@ La plateforme sélectionne automatiquement le serveur optimal basé sur :
 
 #### Structure de Répertoires Améliorée
 ```
-/home/ubuntu/deployments/
+/home/<LINUX_USER_INSTALLATION>/deployments/
 ├── username1/
 │   ├── ai-haccp/
 │   │   ├── deployApp.sh              # Script de déploiement d'application
@@ -493,10 +497,13 @@ La plateforme sélectionne automatiquement le serveur optimal basé sur :
         └── [fichiers application]
 ```
 
+
+> La racine d installation est configurable, pas codee en dur. `LINUX_USER_INSTALLATION` et `PLTF_FOLDER` sont lus depuis `conf/deploy.ini`, donc les chemins se resolvent en `/home/<LINUX_USER_INSTALLATION>/...` pour votre deploiement.
+
 #### Processus de Déploiement Amélioré
 
 1. **Allocation de Serveur Intelligente**: Le système sélectionne le serveur optimal basé sur la capacité, performance et localisation géographique
-2. **Clone Sécurisé**: Télécharge le dépôt git vers `/home/ubuntu/deployments/{username}/{app-name}/` avec validation d'entrée
+2. **Clone Sécurisé**: Télécharge le dépôt git vers `/home/<LINUX_USER_INSTALLATION>/deployments/{username}/{app-name}/` avec validation d'entrée
 3. **Sync Certificat SSL**: Copie automatiquement les certificats SSL vers le répertoire de déploiement avec permissions appropriées
 4. **Commandes Deploy Contextuelles**: Exécute `deployApp.sh` avec contexte utilisateur (user_id, nom, email) et variables d'environnement
 5. **Surveillance Temps Réel**: Suit le statut de déploiement avec mises à jour streaming et journalisation complète

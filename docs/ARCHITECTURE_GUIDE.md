@@ -41,7 +41,11 @@ AI-SwAutoMorph is a **centralized application deployment and management platform
 │       ├── 🔄 replication_routes.py # Multi-server replication sync
 │       ├── 🔒 security_routes.py   # Password reset & 2FA
 │       ├── ⚡ serverless_routes.py  # Serverless Docker job execution
-│       └── 🎮 gpu_routes.py         # MIG shared GPU management
+│       ├── 🎮 gpu_routes.py         # MIG shared GPU management
+       ├── 🧩 templates_routes.py   # Deploy Templates REST API
+       ├── 🧙 wizard_routes.py      # Onboarding setup wizard API
+       └── 🧪 sandbox_routes.py     # Sandbox demo provision/reset/teardown
+
 ├── 📁 templates/                    # HTML templates with EN/FR support
 │   ├── 🎨 base.html                 # Base template with navbar language switching
 │   ├── 📊 dashboard.html            # Main dashboard with unified virtual agents
@@ -259,6 +263,24 @@ The platform provides **two specialized AI agents** with advanced features:
 - `POST /jobs/<id>/cancel` — Cancel pending or running job
 - `GET /jobs/metrics` — Aggregated job statistics (admin)
 
+
+#### 10. 🛡️ Container Runtime Isolation
+
+The platform supports two container runtimes, selectable per-platform from the admin Settings page and stored in the database `configuration` table:
+
+- `runc` (default) — standard OCI runtime sharing the host kernel; no `--runtime` flag is emitted.
+- `kata` (optional) — Kata Containers; each container runs in a dedicated MicroVM with its own kernel for hardware-level isolation.
+
+When `kata` is selected the platform adds `--runtime kata` across orchestrator replica services, serverless jobs (worker reads the value once at startup; restart required), and git-based app deployments (passed to `deployApp.sh` as a trailing argument and the `RUNTIME_TYPE` env var). The value is validated against an allow-list (`runc`, `kata`) and falls back to `runc`.
+
+#### 11. 🧩 Deploy Templates, 🧙 Onboarding Wizard, 🧪 Sandbox
+
+- Deploy Templates: a validated blueprint catalog (`deploy_templates` table, `template_catalog.py`) with a surface-agnostic deploy service (`template_deploy.py`) shared by Dashboard, CLI, MCP and REST (`templates_routes.py`).
+- Onboarding Wizard: first-run setup (`wizard_routes.py`, `configuration_writer.py`) that writes `conf/deploy.ini` atomically with a timestamped backup and hashes the admin password.
+- Sandbox demo account: labeled demo user and sandbox deployments (`sandbox_routes.py`) for trying the platform without affecting real data.
+- Configurable install layout: install folder, Linux user and paths are driven by `conf/deploy.ini` (`PLTF_FOLDER`, `LINUX_USER_INSTALLATION`) rather than a hardcoded path.
+
+
 ---
 
 ## Français
@@ -302,7 +324,11 @@ AI-SwAutoMorph est une **plateforme centralisée de déploiement et de gestion d
 │       ├── 🔄 replication_routes.py # Multi-server replication sync
 │       ├── 🔒 security_routes.py   # Password reset & 2FA
 │       ├── ⚡ serverless_routes.py  # Serverless Docker job execution
-│       └── 🎮 gpu_routes.py         # MIG shared GPU management
+│       ├── 🎮 gpu_routes.py         # MIG shared GPU management
+       ├── 🧩 templates_routes.py   # Deploy Templates REST API
+       ├── 🧙 wizard_routes.py      # Onboarding setup wizard API
+       └── 🧪 sandbox_routes.py     # Sandbox demo provision/reset/teardown
+
 ├── 📁 templates/                    # Modèles HTML avec support EN/FR
 │   ├── 🎨 base.html                 # Modèle de base avec changement de langue navbar
 │   ├── 📊 dashboard.html            # Tableau de bord principal avec agents virtuels unifiés
@@ -476,3 +502,19 @@ La plateforme fournit **deux agents IA spécialisés** avec fonctionnalités ava
 - `GET /jobs/<id>/result` — Obtenir stdout/stderr et code de sortie
 - `POST /jobs/<id>/cancel` — Annuler un job en attente ou en cours
 - `GET /jobs/metrics` — Statistiques agrégées des jobs (admin)
+
+#### 10. 🛡️ Isolation du Runtime de Conteneur
+
+La plateforme supporte deux runtimes de conteneur, selectionnables par plateforme depuis la page Settings admin et stockes dans la table `configuration` de la base :
+
+- `runc` (defaut) — runtime OCI standard partageant le noyau hote ; aucun flag `--runtime` emis.
+- `kata` (optionnel) — Kata Containers ; chaque conteneur tourne dans une MicroVM dediee avec son propre noyau.
+
+Quand `kata` est selectionne, la plateforme ajoute `--runtime kata` sur les repliques orchestrateur, les jobs serverless (le worker lit la valeur au demarrage ; redemarrage requis) et les deploiements git (transmis a `deployApp.sh` en argument et via `RUNTIME_TYPE`). La valeur est validee contre une liste (`runc`, `kata`) et retombe sur `runc`.
+
+#### 11. 🧩 Deploy Templates, 🧙 Assistant d Onboarding, 🧪 Sandbox
+
+- Deploy Templates : catalogue de blueprints valides (table `deploy_templates`, `template_catalog.py`) avec un service de deploiement agnostique (`template_deploy.py`) partage par Dashboard, CLI, MCP et REST.
+- Assistant d onboarding : configuration au premier demarrage (`wizard_routes.py`, `configuration_writer.py`) qui ecrit `conf/deploy.ini` de maniere atomique avec sauvegarde horodatee.
+- Compte demo Sandbox : utilisateur demo et deploiements sandbox (`sandbox_routes.py`) pour tester sans impacter les donnees reelles.
+- Layout d installation configurable : dossier, utilisateur Linux et chemins pilotes par `conf/deploy.ini` (`PLTF_FOLDER`, `LINUX_USER_INSTALLATION`).

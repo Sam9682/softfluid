@@ -144,7 +144,9 @@ Returns aggregated statistics: total jobs, jobs by status, average execution tim
 
 ## Configuration
 
-The serverless system is configured in `src/serverless/config.py`:
+Default settings are defined in `src/serverless/config.py` (the `SERVERLESS_CONFIG` dict the worker loads). Operator-facing runtime overrides live in `conf/serverless.ini` and take effect on worker restart. The container runtime type (`runc` default, `kata` optional) is resolved separately from the database `configuration` table, read once at worker startup (a restart is required to change it).
+
+Default values:
 
 |         Parameter        |                 Default                  |       Description         |
 |--------------------------|------------------------------------------|---------------------------|

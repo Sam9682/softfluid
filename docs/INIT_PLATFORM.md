@@ -8,6 +8,17 @@ This document explains how to use `init_pltf.sh` to bootstrap a fresh server for
 
 Before any installation step, the script collects the **platform identity** so each customer deployment can be renamed in one place. When a terminal is attached it prompts for the values below (press Enter to accept the shown default); it then clones the repository and writes `PLTF_NAME` / `PLTF_FOLDER` into `conf/deploy.ini`.
 
+
+### How the defaults are resolved
+
+Each of the four identity values is resolved independently through a fixed precedence chain:
+
+1. A pre-set environment variable (if non-empty) always wins.
+2. Otherwise the matching key in `conf/deploy.ini` is used (if present and non-empty).
+3. Otherwise a built-in hardcoded fallback is used, so the script never breaks on a fresh or incomplete config.
+
+The hardcoded fallbacks are `opcp-explorer` (PLTF_FOLDER), `OPCP-explorer` (PLTF_NAME), `https://github.com/Sam9682/opcp-explorer.git` (REPO_URL) and `git@github.com:Sam9682/ai-swautomorph--shared.git` (SUBMODULE_URL). The shipped `conf/deploy.ini` already defines these keys (its `PLTF_NAME` is the longer deployment-specific value, which takes precedence over the fallback), and every parameter in that file carries an explanatory comment.
+
 ## Prerequisites
 
 | Requirement |                              Details                       |
@@ -191,4 +202,4 @@ newgrp docker
 
 - [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) — How to deploy the platform after initialization
 - [ARCHITECTURE_GUIDE.md](./ARCHITECTURE_GUIDE.md) — Platform architecture overview
-- [REPLICATION_GUIDE.md](./REPLICATION_GUIDE.md) — Multi-server replication setup
+- [REPLICATION_GUIDE.md](./technicals/REPLICATION_GUIDE.md) — Multi-server replication setup

@@ -281,6 +281,28 @@ curl https://www.swautomorph.com/api/jobs?page=1&per_page=20 \
 
 ---
 
+### 🧩 Deploy Templates
+
+The platform ships a catalog of ready-to-deploy blueprints. Every surface (Dashboard, CLI, MCP, REST) deploys through the same service, so behavior is identical everywhere. Deployed apps are exposed at `https://{domain}/{USER_ID}/{APPLICATION_NAME}`.
+
+Built-in templates: `static-site` (nginx), `fastapi-starter`, `n8n`, `ollama`, `jupyter`, `vector-db` (Qdrant).
+
+```bash
+# List available templates
+curl https://www.swautomorph.com/api/templates -H "Cookie: session=your-session-cookie"
+
+# Deploy from a template
+curl -X POST https://www.swautomorph.com/api/templates/fastapi-starter/deploy -H "Content-Type: application/json" -H "Cookie: session=your-session-cookie" -d '{"application_name":"my-api"}'
+```
+
+### 🛡️ Container Runtime
+
+Admins can choose the container runtime from the Settings page: `runc` (default, shares the host kernel) or `kata` (optional, each container in its own MicroVM). The choice applies to app deployments, serverless jobs, and orchestrator replicas; serverless workers pick up a change on restart.
+
+### 🧙 Onboarding Wizard and 🧪 Sandbox
+
+On first run, a guided setup wizard writes `conf/deploy.ini` safely (timestamped backup, atomic write, hashed admin password). A labeled Sandbox demo account lets you try the platform with throwaway deployments that do not affect real data.
+
 ### 🔧 Troubleshooting
 
 #### 🚫 Authentication Failures
@@ -523,6 +545,20 @@ Soumettre des jobs Docker à la demande sans gérer l'infrastructure. La platefo
 - `cancelled` — Annulé par l'utilisateur
 
 ---
+
+### 🧩 Deploy Templates
+
+La plateforme fournit un catalogue de blueprints prets a deployer. Chaque surface (Dashboard, CLI, MCP, REST) deploie via le meme service, donc le comportement est identique partout. Les apps deployees sont exposees sur `https://{domain}/{USER_ID}/{APPLICATION_NAME}`.
+
+Templates integres : `static-site` (nginx), `fastapi-starter`, `n8n`, `ollama`, `jupyter`, `vector-db` (Qdrant).
+
+### 🛡️ Runtime de Conteneur
+
+Les admins choisissent le runtime depuis la page Settings : `runc` (defaut, partage le noyau hote) ou `kata` (optionnel, chaque conteneur dans sa propre MicroVM). Le choix s applique aux deploiements, jobs serverless et repliques orchestrateur ; les workers serverless prennent en compte un changement au redemarrage.
+
+### 🧙 Assistant d Onboarding et 🧪 Sandbox
+
+Au premier demarrage, un assistant guide ecrit `conf/deploy.ini` en securite (sauvegarde horodatee, ecriture atomique, mot de passe admin hache). Un compte demo Sandbox permet de tester la plateforme avec des deploiements jetables sans impacter les donnees reelles.
 
 ### 🔧 Dépannage
 

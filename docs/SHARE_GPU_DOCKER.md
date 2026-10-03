@@ -1,4 +1,4 @@
-# OPCP AI-Powered Store — Sales Pitch
+# OPCP AI-Powered Store — Shared GPU via Docker (Business + Technical Guide)
 
 ## Professional Service Labs for OCPC Customers
 
@@ -137,3 +137,34 @@ docker run --gpus '"device=MIG-xxx"' my-ai-model:latest
 ---
 
 *OPCP AI-Powered Store — Making GPU compute accessible, shareable, and autonomous.*
+
+---
+
+## Technical: Shared GPU with Docker and the Container Runtime
+
+### How GPU slices reach containers
+
+Once MIG is enabled and instances are created, each isolated slice is exposed to a container through the Docker `--gpus` flag by its MIG UUID:
+
+```bash
+docker run --gpus "device=MIG-<uuid>" my-ai-model:latest
+```
+
+The same mechanism is used by git-based app deployments, serverless jobs, and orchestrator replicas, so any workload can be pinned to a dedicated GPU partition.
+
+### Container runtime: runc default or kata optional
+
+The platform supports two container runtimes, selectable per-platform from the admin Settings page:
+
+| Runtime | Isolation | Notes |
+|---------|-----------|-------|
+| `runc` (default) | Shares the host kernel | Fast, dense; emits no `--runtime` flag (Docker default) |
+| `kata` (optional) | Dedicated lightweight MicroVM per container, own kernel | Stronger isolation for multi-tenant / sensitive workloads |
+
+When `kata` is selected, the platform adds `--runtime kata` across all three launch paths: orchestrator replica services, serverless Docker jobs, and git-based app deployments. The serverless worker reads the runtime type once at startup, so a worker restart is required to pick up a change. Git-based deployments receive the runtime type both as a trailing positional argument to `deployApp.sh` and via the `RUNTIME_TYPE` environment variable. The value is validated against an allow-list (`runc`, `kata`); any other value falls back to `runc`.
+
+> GPU workloads work under both runtimes. Choose `runc` for maximum density and speed, or `kata` when you need hardware-level isolation between tenants sharing the same host and GPU.
+
+### Server prerequisites handled by init_pltf.sh
+
+`init_pltf.sh` provisions each GPU server with: NVIDIA drivers (`nvidia-driver-550`), MIG mode enablement, the NVIDIA Container Toolkit (`nvidia-container-toolkit`) for Docker GPU access, and registration of the `kata` runtime with the Docker daemon. Verify with `docker info` and `docker run --runtime kata hello-world`.

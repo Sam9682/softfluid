@@ -24,13 +24,12 @@ print_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-# Default platform identity values. Each can be pre-set via environment
-# variables for non-interactive/CI runs; otherwise the user is prompted
-# (when a TTY is attached) and may accept these defaults by pressing Enter.
-DEFAULT_PLTF_FOLDER="opcp-explorer"
-DEFAULT_PLTF_NAME="OPCP-explorer"
-DEFAULT_REPO_URL="https://github.com/Sam9682/opcp-explorer.git"
-DEFAULT_SUBMODULE_URL="git@github.com:Sam9682/ai-swautomorph--shared.git"
+# Platform identity defaults (DEFAULT_PLTF_FOLDER, DEFAULT_PLTF_NAME,
+# DEFAULT_REPO_URL, DEFAULT_SUBMODULE_URL) are no longer hardcoded here. They
+# are computed by resolve_platform_defaults (defined below) via the precedence
+# chain env > conf/deploy.ini > hardcoded fallback, and that resolver is
+# invoked once above the source guard so the DEFAULT_* values exist in both
+# sourced and executed contexts.
 
 # Validate a platform folder slug: lowercase letters, digits and hyphens,
 # must start with a letter or digit, non-empty.
@@ -113,6 +112,63 @@ set_ini_value() {
         echo "${key}=${value}" >> "$file"
     fi
 }
+
+# Read the value of KEY from an INI file.
+#   get_ini_value <file> <key>
+# Echoes the value (text after the first '=') for the first line matching
+# ^KEY= . Prints nothing (empty) when the file is absent or the key is not
+# present. Lines whose key is commented (e.g. "# KEY=...") do not match
+# because the '#' is part of the matched prefix, so ^KEY= fails.
+get_ini_value() {
+    local file="$1" key="$2"
+    [ -f "$file" ] || return 0
+    # First matching line only; strip everything up to and including first '='.
+    grep -E "^${key}=" "$file" | head -n 1 | cut -d'=' -f2-
+}
+
+# Path to the INI file the resolver reads platform-identity defaults from.
+# Overridable via the CONFIG_FILE environment variable (used by the test
+# harness to point at a temporary INI); defaults to conf/deploy.ini.
+CONFIG_FILE="${CONFIG_FILE:-conf/deploy.ini}"
+
+# Resolve one platform-identity default via the fixed precedence chain:
+#   pre-set environment variable  >  conf/deploy.ini value  >  hardcoded fallback
+#   _resolve_default <env-var-name> <config-key> <fallback>
+# A pre-set, non-empty environment variable (dereferenced with ${!env_name})
+# wins. Otherwise the Config_File value is used when non-empty. Otherwise the
+# hardcoded fallback is returned. An env var that is unset or empty is treated
+# as absent, matching the ${VAR:-} conventions elsewhere in the script.
+_resolve_default() {
+    local env_name="$1" key="$2" fallback="$3"
+    local env_val="${!env_name:-}"
+    if [ -n "$env_val" ]; then
+        printf '%s' "$env_val"; return 0
+    fi
+    local cfg_val
+    cfg_val="$(get_ini_value "$CONFIG_FILE" "$key")"
+    if [ -n "$cfg_val" ]; then
+        printf '%s' "$cfg_val"; return 0
+    fi
+    printf '%s' "$fallback"
+}
+
+# Compute the four platform-identity DEFAULT_* variables, each resolved
+# independently through _resolve_default. The env-var and config-key names
+# match (PLTF_FOLDER, PLTF_NAME, REPO_URL, SUBMODULE_URL) and the fallbacks
+# are the original hardcoded opcp strings.
+resolve_platform_defaults() {
+    DEFAULT_PLTF_FOLDER="$(_resolve_default  PLTF_FOLDER   PLTF_FOLDER   "opcp-explorer")"
+    DEFAULT_PLTF_NAME="$(_resolve_default    PLTF_NAME     PLTF_NAME     "OPCP-explorer")"
+    DEFAULT_REPO_URL="$(_resolve_default     REPO_URL      REPO_URL      "https://github.com/Sam9682/opcp-explorer.git")"
+    DEFAULT_SUBMODULE_URL="$(_resolve_default SUBMODULE_URL SUBMODULE_URL "git@github.com:Sam9682/ai-swautomorph--shared.git")"
+}
+
+# Invoke the resolver once at load time, above the source guard, so the four
+# DEFAULT_* variables exist in both sourced (test harness) and executed
+# (installer) contexts — replacing the former top-level literal assignments.
+# Reading the INI file is idempotent and side-effect-free, so it is safe to run
+# on source; the non-idempotent installer work stays below the guard.
+resolve_platform_defaults
 
 # When this script is sourced (e.g. by the test harness) rather than executed,
 # only the function definitions above are loaded; the installer body below is

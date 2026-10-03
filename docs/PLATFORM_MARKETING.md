@@ -69,6 +69,12 @@ Déployez sur plusieurs serveurs avec répartition automatique de charge. La ré
 ### 6. Assistants IA Virtuels
 Des agents IA intégrés vous accompagnent pour la modification de code (Developer Agent) et les opérations de déploiement (Operations Agent).
 
+### 7. Catalogue de Templates de Déploiement
+Déployez des applications prêtes à l emploi (site statique, FastAPI, n8n, Ollama, Jupyter, base vectorielle Qdrant) de manière identique depuis le Dashboard, le CLI, MCP et l API REST.
+
+### 8. Isolation du Runtime de Conteneur
+Choisissez le niveau d isolation des conteneurs : runc par défaut, ou Kata Containers (MicroVM dédiée par conteneur) pour les charges multi-locataires sensibles.
+
 ## Interfaces d'Accès
 
 | Interface | Usage | Public |

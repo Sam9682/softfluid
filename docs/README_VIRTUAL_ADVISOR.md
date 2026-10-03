@@ -6,7 +6,7 @@ Virtual Advisor now handles **application management** with a simple dropdown in
 
 ## Quick Access
 
-1. Login to dashboard: `https://localhost:5000`
+1. Login to the dashboard (your platform URL, e.g. `https://localhost`)
 2. Click: **💡 Virtual Advisor** (bottom right)
 3. Select action from dropdown
 4. Type your request
@@ -85,16 +85,18 @@ Response: [Container logs displayed]
 
 ## Documentation
 
-- **Full Guide**: `VIRTUAL_ADVISOR_CHANGES.md`
-- **UI Details**: `VIRTUAL_ADVISOR_UI_CHANGES.md`
-- **Testing**: `TEST_VIRTUAL_ADVISOR.md`
-- **Quick Reference**: `VIRTUAL_ADVISOR_QUICK_GUIDE.md`
-- **Implementation**: `IMPLEMENTATION_SUMMARY.md`
+Detailed technical notes live under `docs/technicals/`:
+
+- [Full Guide](./technicals/VIRTUAL_ADVISOR_CHANGES.md)
+- [UI Details](./technicals/VIRTUAL_ADVISOR_UI_CHANGES.md)
+- [Testing](./technicals/TEST_VIRTUAL_ADVISOR.md)
+- [Quick Reference](./technicals/VIRTUAL_ADVISOR_QUICK_GUIDE.md)
+- [Implementation](./technicals/IMPLEMENTATION_SUMMARY.md)
 
 ## Troubleshooting
 
 **Action not working?**
-- Check if qchat is installed: `which qchat`
+- Check the agent CLI is installed: `which q`
 - Verify you're logged in
 - Check application logs
 
@@ -118,5 +120,4 @@ Need help? Check:
 ---
 
 **Version**: 1.0
-**Last Updated**: 2026
 **Status**: ✅ Production Ready
