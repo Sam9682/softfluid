@@ -409,7 +409,7 @@ p {
     <div class="subtitle">Votre plateforme centralisée de déploiement<br>et de gestion d'applications</div>
     <div class="tagline">Déployez, supervisez et faites évoluer vos applications web<br>en toute simplicité, grâce à une interface unique<br>et des processus entièrement automatisés.</div>
     <div class="brand">PSMC OVHcloud</div>
-    <div class="version">opcp-psmc.com</div>
+    <div class="version">agentic-ai-pltf.com</div>
 </div>
 
 <!-- PAGE 2: VALUE PROPOSITION -->
@@ -624,7 +624,7 @@ p {
     </div>
 
     <div class="footer">
-        <p>© PSMC OVHcloud — @@PLATFORM_NAME@@ • opcp-psmc.com</p>
+        <p>© PSMC OVHcloud — @@PLATFORM_NAME@@ • agentic-ai-pltf.com</p>
         <p style="font-size:10px; color:#bbb;">Simplifiez le déploiement, concentrez-vous sur votre métier.</p>
     </div>
 </div>

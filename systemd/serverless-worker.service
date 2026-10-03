@@ -1,5 +1,5 @@
 [Unit]
-Description=OPCP Serverless Worker Service
+Description=agentic-ai-pltf Serverless Worker Service
 After=postgresql.service docker.service
 Requires=postgresql.service
 
@@ -10,12 +10,12 @@ Type=simple
 # Changing the install user requires manually editing/regenerating this unit; it is not derived at runtime.
 User=psmc
 Group=psmc
-WorkingDirectory=/home/psmc/opcp-cloudstore-docker-ai
+WorkingDirectory=/home/ubuntu/agentic-ai-pltf
 ExecStart=/usr/bin/python3 -m src.serverless.worker
 Restart=always
 RestartSec=5
 Environment=WORKER_ID=worker-001
-Environment=PYTHONPATH=/home/psmc/opcp-cloudstore-docker-ai
+Environment=PYTHONPATH=/home/ubuntu/agentic-ai-pltf
 
 [Install]
 WantedBy=multi-user.target

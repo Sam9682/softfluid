@@ -72,7 +72,7 @@ NAME_OF_APPLICATION=${NAME_OF_APPLICATION:-"agentic-ai-pltf"}
 APPLICATION_IDENTITY_NUMBER=${APPLICATION_IDENTITY_NUMBER:-0}
 RANGE_START_CONTROLPLAN=${RANGE_START_CONTROLPLAN:-80}
 RANGE_RESERVED_CONTROLPLAN=${RANGE_RESERVED_CONTROLPLAN:-0}
-S3_BUCKET_NAME=${S3_BUCKET_NAME:-"opcp-s3"}
+S3_BUCKET_NAME=${S3_BUCKET_NAME:-"agentic-ai-pltf-s3"}
 PLTF_FOLDER=${PLTF_FOLDER:-"agentic-ai-pltf"}
 # Display name shown in banners/usage; read from PLTF_NAME in deploy.ini.
 PLTF_NAME=${PLTF_NAME:-"agentic-ai-pltf_AI_SharedGPU_Docker_Serverless"}
@@ -87,13 +87,13 @@ USER_EMAIL=${5:-${DEFAULT_USER_EMAIL:-"admin@softfluid.fr"}}
 DESCRIPTION=${6:-${DEFAULT_DESCRIPTION:-"Basic Admin user for Control Plan"}}
 
 # Configuration (loaded from deploy.ini with fallback defaults)
-DOMAIN=${DOMAIN:-"opcp-psmc.com"}
-EMAIL=${EMAIL:-"admin@opcp-psmc.com"}
+DOMAIN=${DOMAIN:-"agentic-ai-pltf.com"}
+EMAIL=${EMAIL:-"admin@agentic-ai-pltf.com"}
 ENV_FILE=${ENV_FILE:-".env.prod"}
 GITEA_VERSION=${GITEA_VERSION:-"1.21.3"}
 GITEA_ADMIN_USER=${GITEA_ADMIN_USER:-"gitadmin"}
 GITEA_ADMIN_PASSWORD=${GITEA_ADMIN_PASSWORD:-"password"}
-GITEA_ADMIN_EMAIL=${GITEA_ADMIN_EMAIL:-"admin@opcp-psmc.com"}
+GITEA_ADMIN_EMAIL=${GITEA_ADMIN_EMAIL:-"admin@agentic-ai-pltf.com"}
 
 # Normalize LOCAL_MODE parameter (handle --locally and --docker)
 case "$LOCAL_MODE" in
@@ -484,7 +484,7 @@ recover_database() {
 import os
 from simple_term_menu import TerminalMenu
 
-s3_bucket = os.environ.get('S3_BUCKET_NAME', 'opcp-s3')
+s3_bucket = os.environ.get('S3_BUCKET_NAME', 'agentic-ai-pltf-s3')
 app_name = os.environ.get('NAME_OF_APPLICATION', 'agentic-ai-pltf')
 options = ["Local backups (./softfluid/db/backup)", f"Remote S3 backups (s3://{s3_bucket}/{app_name}/db/backup)"]
 terminal_menu = TerminalMenu(
@@ -2243,8 +2243,8 @@ help() {
     echo "  • Docker Containers (optional)"
     echo ""
     echo "ACCESS URLS:"
-    echo "  • Main App: https://www.opcp-psmc.com"
-    echo "  • Gitea:    https://www.opcp-psmc.com/gitea"
+    echo "  • Main App: https://www.agentic-ai-pltf.com"
+    echo "  • Gitea:    https://www.agentic-ai-pltf.com/gitea"
     echo "  • Local:    https://localhost (with SSL certificates)"
 }
 

@@ -1,6 +1,6 @@
 # Platform Overview
 
-OPCP AI-Powered Store (a.k.a. OPCP Explorer / AI-SwAutoMorph) is a centralized application deployment and management platform for both humans and GenAI agents. It automates clone/build/run lifecycles, SSO authentication, and multi-server operations, and exposes every capability through four interchangeable interfaces: Web dashboard, REST API, CLI, and MCP (Model Context Protocol).
+Agentic-AI-Powered Store (a.k.a. AI-SwAutoMorph) is a centralized application deployment and management platform for both humans and GenAI agents. It automates clone/build/run lifecycles, SSO authentication, and multi-server operations, and exposes every capability through four interchangeable interfaces: Web dashboard, REST API, CLI, and MCP (Model Context Protocol).
 
 ## Core Capabilities
 

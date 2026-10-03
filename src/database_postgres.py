@@ -502,7 +502,7 @@ def init_db():
                 conn.rollback()
                 print(f"[INFO] Extended ports migration check: {e}")
 
-            # Ensure opcp-serverless-brik application exists and is assigned to all users
+            # Ensure agentic-ai-pltf-serverless-brik application exists and is assigned to all users
             try:
                 cursor.execute("SELECT id FROM applications WHERE name = %s", ('opcp-serverless-brik',))
                 serverless_app = cursor.fetchone()
@@ -512,7 +512,7 @@ def init_db():
                         INSERT INTO applications (name, description, git_url, git_repo_size, docker_build_duration, docker_start_duration, docker_stop_duration, docker_ps_duration)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         RETURNING id
-                    ''', ('opcp-serverless-brik', 'OPCP Serverless Docker Execution', 'https://github.com/Sam9682/opcp-serverless-brik.git', 10, 30, 30, 10, 1))
+                    ''', ('opcp-serverless-brik', 'agentic-ai-pltf Serverless Docker Execution', 'https://github.com/Sam9682/opcp-serverless-brik.git', 10, 30, 30, 10, 1))
                     serverless_app_id = cursor.fetchone()[0]
                     # Insert default cost
                     cursor.execute('INSERT INTO application_costs (application_id, cost_per_day) VALUES (%s, %s)', (serverless_app_id, 1.0))

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Install script for the OPCP Serverless Worker systemd service.
+# Install script for the agentic-ai-pltf Serverless Worker systemd service.
 # This script copies the service file, reloads systemd, and enables the service.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

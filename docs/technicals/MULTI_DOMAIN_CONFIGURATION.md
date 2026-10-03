@@ -206,7 +206,7 @@ cp privkey.key /home/ubuntu/<PLTF_FOLDER>/ssl/yourdomain.com/privateKey_domain.k
 
 # Set proper permissions
 chmod 644 /home/ubuntu/<PLTF_FOLDER>/ssl/yourdomain.com/fullchain_domain.crt
-chmod 600 /home/ubuntu/opcp-aipoweredstore-docker-ah/ssl/yourdomain.com/privateKey_domain.key
+chmod 600 /home/ubuntu/agentic-ai-pltf-docker-ah/ssl/yourdomain.com/privateKey_domain.key
 ```
 
 ### 3. Deploy Configuration

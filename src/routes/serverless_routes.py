@@ -38,7 +38,7 @@ logger.propagate = False
 serverless_bp = Blueprint('serverless', __name__, url_prefix='/api')
 
 
-# Map remote opcp-serverless-brik statuses to local DB statuses
+# Map remote agentic-ai-pltf-serverless-brik statuses to local DB statuses
 REMOTE_STATUS_MAP = {
     'success': 'completed',
     'completed': 'completed',
@@ -52,16 +52,16 @@ REMOTE_STATUS_MAP = {
 
 
 def sync_job_from_remote(job_id, target_link):
-    """Poll the remote opcp-serverless-brik endpoint to get actual job status and update local DB.
+    """Poll the remote agentic-ai-pltf-serverless-brik endpoint to get actual job status and update local DB.
     
     Returns the remote response data dict if successful, or None if the remote is unreachable.
     """
     if not target_link:
         return None
 
-    # Build the remote URL: target_link is like https://opcp-psmc.com:6133
+    # Build the remote URL: target_link is like https://agentic-ai-pltf.com:6133
     # The remote API is at {target_link}/jobs/{job_id}
-    # But user's curl shows http://opcp-psmc.com:6132/jobs/{id} - use HTTP port
+    # But user's curl shows http://agentic-ai-pltf.com:6132/jobs/{id} - use HTTP port
     # Convert https to http and port-1 for the API endpoint, or just try as-is
     remote_url = f"{target_link}/jobs/{job_id}"
     
@@ -138,7 +138,7 @@ def sync_job_from_remote(job_id, target_link):
 
 @serverless_bp.route('/serverless-links', methods=['GET'])
 def get_serverless_links():
-    """Get opcp-serverless-* endpoint links that are actively running, with availability status."""
+    """Get agentic-ai-pltf-serverless-* endpoint links that are actively running, with availability status."""
     # Auth check
     user_id = session.get('user_id')
     if not user_id:
@@ -151,7 +151,7 @@ def get_serverless_links():
 
         result_links = []
 
-        # Get links from user_applications for apps matching 'opcp-serverless%'
+        # Get links from user_applications for apps matching 'agentic-ai-pltf-serverless%'
         # Only include endpoints where the deployment is actually running.
         try:
             all_links = db_manager.execute_query('''
@@ -179,7 +179,7 @@ def get_serverless_links():
             logger.warning(f"Failed to query user_applications for serverless links: {e}")
 
         # Fallback: if no running deployments found, try without deployment join
-        # but still filter by opcp-serverless* pattern
+        # but still filter by agentic-ai-pltf-serverless* pattern
         if not result_links:
             try:
                 all_links = db_manager.execute_query('''

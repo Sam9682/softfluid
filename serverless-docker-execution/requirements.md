@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This feature adds a serverless container execution capability to the OPCP CloudStore Docker AI platform. Users can submit Docker-based jobs via a REST API, which are queued in PostgreSQL and executed by a separate worker service using Docker or Podman. The feature includes job lifecycle management (submission, status tracking, result retrieval, cancellation), container security enforcement, monitoring, and a new "Application Orchestrator" dashboard menu item. A new external module `opcp-serverless-brik` on GitHub provides the web API service for serverless execution.
+This feature adds a serverless container execution capability to the agentic-ai-pltf platform. Users can submit Docker-based jobs via a REST API, which are queued in PostgreSQL and executed by a separate worker service using Docker or Podman. The feature includes job lifecycle management (submission, status tracking, result retrieval, cancellation), container security enforcement, monitoring, and a new "Application Orchestrator" dashboard menu item. A new external module `agentic-ai-pltf-serverless-brik` on GitHub provides the web API service for serverless execution.
 
 ## Glossary
 
@@ -13,8 +13,8 @@ This feature adds a serverless container execution capability to the OPCP CloudS
 - **Job**: A unit of work representing a single container execution with defined image, command, environment, and timeout
 - **Registry_Whitelist**: A configurable list of approved container image registries from which images may be pulled
 - **Warm_Pool**: An optional (Phase 2) set of pre-started idle containers maintained for reduced startup latency
-- **Dashboard**: The existing OPCP web dashboard extended with a new main menu item "Application Orchestrator"
-- **opcp-serverless-brik**: A new GitHub module that provides the web API service layer for serverless job execution
+- **Dashboard**: The existing agentic-ai-pltf web dashboard extended with a new main menu item "Application Orchestrator"
+- **agentic-ai-pltf-serverless-brik**: A new GitHub module that provides the web API service layer for serverless job execution
 
 ## Requirements
 
@@ -139,15 +139,15 @@ This feature adds a serverless container execution capability to the OPCP CloudS
 4. THE Worker_Service SHALL support at least 100 concurrent running jobs on a single server
 5. THE Job_Submission_API SHALL maintain 99.5% availability measured over a rolling 30-day window
 
-### Requirement 12: opcp-serverless-brik Integration
+### Requirement 12: agentic-ai-pltf-serverless-brik Integration
 
-**User Story:** As a platform developer, I want to integrate the `opcp-serverless-brik` GitHub module as the serverless API service layer, so that the platform leverages a dedicated, maintainable component for job execution.
+**User Story:** As a platform developer, I want to integrate the `agentic-ai-pltf-serverless-brik` GitHub module as the serverless API service layer, so that the platform leverages a dedicated, maintainable component for job execution.
 
 #### Acceptance Criteria
 
-1. THE Job_Submission_API SHALL be implemented within the `opcp-serverless-brik` module and integrated with the existing Flask application via a new Blueprint registered at `/api/jobs`
-2. THE opcp-serverless-brik module SHALL use the same PostgreSQL connection pooling infrastructure as the existing platform (via `database_postgres.db_manager`)
-3. THE opcp-serverless-brik module SHALL authenticate requests using the existing session-based authentication mechanism from the platform
+1. THE Job_Submission_API SHALL be implemented within the `agentic-ai-pltf-serverless-brik` module and integrated with the existing Flask application via a new Blueprint registered at `/api/jobs`
+2. THE agentic-ai-pltf-serverless-brik module SHALL use the same PostgreSQL connection pooling infrastructure as the existing platform (via `database_postgres.db_manager`)
+3. THE agentic-ai-pltf-serverless-brik module SHALL authenticate requests using the existing session-based authentication mechanism from the platform
 
 ### Requirement 13: Scalability Roadmap Support
 

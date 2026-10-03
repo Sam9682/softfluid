@@ -167,7 +167,7 @@ _resolve_default() {
 # Compute the four platform-identity DEFAULT_* variables, each resolved
 # independently through _resolve_default. The env-var and config-key names
 # match (PLTF_FOLDER, PLTF_NAME, REPO_URL, SUBMODULE_URL) and the fallbacks
-# are the original hardcoded opcp strings.
+# are the original hardcoded agentic-ai-pltf strings.
 resolve_platform_defaults() {
     DEFAULT_PLTF_FOLDER="$(_resolve_default  PLTF_FOLDER   PLTF_FOLDER   "agentic-ai-pltf")"
     DEFAULT_PLTF_NAME="$(_resolve_default    PLTF_NAME     PLTF_NAME     "agentic-ai-pltf")"
@@ -182,6 +182,68 @@ resolve_platform_defaults() {
 # Reading the INI file is idempotent and side-effect-free, so it is safe to run
 # on source; the non-idempotent installer work stays below the guard.
 resolve_platform_defaults
+
+# Restore ownership of the clone and the user-space home artifacts to the
+# invoking user when the installer was launched via `sudo`. Defined above the
+# source guard so it loads in both sourced (test harness) and executed
+# contexts; it performs no work when merely sourced.
+#
+# Bug condition (and preservation guard): this is a no-op unless the script
+# runs as root (EUID 0) on behalf of a real, non-root invoking user
+# (SUDO_USER set and not "root"). That single guard preserves behavior for
+# direct non-root runs and for genuine root logins / SUDO_USER=root.
+#
+# The invoking user's home is resolved from the passwd database (not $HOME,
+# which may be /root under sudo). The test harness may override this via a
+# non-empty SIM_HOME so the home-artifact restore targets a sandbox home while
+# production uses the passwd entry.
+restore_invoking_user_ownership() {
+    # Not the bug condition -> no-op (preservation).
+    if [ "${EUID}" -ne 0 ] || [ -z "${SUDO_USER:-}" ] || [ "${SUDO_USER}" = "root" ]; then
+        return 0
+    fi
+
+    local user="${SUDO_USER}"
+
+    # Never attempt an invalid chown: the invoking user must exist.
+    if ! id -u "${user}" >/dev/null 2>&1; then
+        print_warning "Cannot resolve invoking user '${user}'; skipping ownership restore"
+        return 0
+    fi
+
+    # Resolve the primary group name (not assumed to equal the username).
+    local group
+    group="$(id -gn "${user}")"
+
+    # Resolve the invoking user's home: prefer a non-empty SIM_HOME override
+    # (test harness), otherwise the passwd-database home ($HOME is unreliable
+    # under sudo).
+    local user_home
+    if [ -n "${SIM_HOME:-}" ]; then
+        user_home="${SIM_HOME}"
+    else
+        user_home="$(getent passwd "${user}" | cut -d: -f6)"
+    fi
+
+    # Restore the clone (covers shared, .venv, logs, conf/deploy.ini). A
+    # failure warns but does not abort an otherwise successful install.
+    if [ -n "${REPO_DIR:-}" ] && [ -e "${REPO_DIR}" ]; then
+        if ! chown -R "${user}:${group}" "${REPO_DIR}"; then
+            print_warning "Failed to restore ownership of ${REPO_DIR} to ${user}:${group}"
+        fi
+    fi
+
+    # Restore the home artifacts this script creates, skipping any that do not
+    # exist. Each chown is guarded independently.
+    local path
+    for path in "${user_home}/.aws" "${user_home}/deployments"; do
+        if [ -e "${path}" ]; then
+            if ! chown -R "${user}:${group}" "${path}"; then
+                print_warning "Failed to restore ownership of ${path} to ${user}:${group}"
+            fi
+        fi
+    done
+}
 
 # When this script is sourced (e.g. by the test harness) rather than executed,
 # only the function definitions above are loaded; the installer body below is
@@ -417,6 +479,15 @@ mkdir -p deployments
 cd deployments
 mkdir -p admin
 print_success "Configuration complete"
+
+# Hand the clone and user-space home artifacts back to the invoking user when
+# the installer ran under sudo. Placed last so every user-space artifact
+# (REPO_DIR with shared/.venv/logs/conf/deploy.ini, plus ~/.aws and
+# ~/deployments/admin) already exists and a single recursive pass catches them
+# all. No-op for non-sudo and bare-root runs.
+print_step "Restoring ownership to the invoking user..."
+restore_invoking_user_ownership
+print_success "Ownership restored"
 
 echo ""
 echo -e "${GREEN}[OK] Installation completed successfully!${NC}"

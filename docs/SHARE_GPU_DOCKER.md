@@ -1,4 +1,4 @@
-# OPCP AI-Powered Store — Shared GPU via Docker (Business + Technical Guide)
+# Agentic-ai-pltf — Shared GPU via Docker (Business + Technical Guide)
 
 ## Professional Service Labs for OCPC Customers
 
@@ -16,11 +16,11 @@ Your customers are building AI workloads. They need GPU compute, but:
 
 ---
 
-## The Solution: OPCP AI-Powered Store for OPCP Core Baremetal Platform
+## The Solution: agentic-ai-pltf for Baremetal Platform
 
-A turnkey platform that lets your OCPC customers **deploy, manage, and share GPU resources** through a single interface — Web, CLI, API, or AI agents.
+A turnkey platform that lets your agentic-ai-pltf customers **deploy, manage, and share GPU resources** through a single interface — Web, CLI, API, or AI agents.
 
-### One OPCP Platform, Four Access Modes
+### One agentic-ai-pltf Platform, Four Access Modes
 
 |        Mode         |                 Use Case                        |
 |---------------------|-------------------------------------------------|
@@ -31,7 +31,7 @@ A turnkey platform that lets your OCPC customers **deploy, manage, and share GPU
 
 ---
 
-## Key Features: Docker/Podman, Serverless and Shared GPU via Docker on OPCP Baremetal
+## Key Features: Docker/Podman, Serverless and Shared GPU via Docker on Baremetal
 
 ### NVIDIA MIG — GPU Partitioning Made Simple
 
@@ -71,7 +71,7 @@ docker run --gpus '"device=MIG-xxx"' my-ai-model:latest
 
 ### For the Sales Conversation
 
-|                 Customer Pain                |                        OPCP Answer                                         |                      OVH Value                       |
+|                 Customer Pain                |                        agentic-ai-pltf Answer                                         |                      OVH Value                       |
 |----------------------------------------------|------------------------------------------------------|-----------------------------------------------|
 | "Our AI team can't wait for IT to provision" | Self-service web UI + API for instant GPU access     | Reduced support tickets, faster adoption               |
 | "We need AI agents to deploy autonomously"   | MCP protocol + REST API for GenAI automation         | Future-proof positioning in AI infrastructure  |
@@ -136,7 +136,7 @@ docker run --gpus '"device=MIG-xxx"' my-ai-model:latest
 
 ---
 
-*OPCP AI-Powered Store — Making GPU compute accessible, shareable, and autonomous.*
+*agentic-ai-pltf — Making GPU compute accessible, shareable, and autonomous.*
 
 ---
 
