@@ -97,6 +97,10 @@ class ContainerRuntime(ABC):
                 - network (str): Network mode (e.g. 'none').
                 - read_only (bool): Mount root filesystem as read-only.
                 - user (str): User to run the container as.
+                - runtime_type (str): Container runtime to use ('runc' or
+                  'kata'). When 'kata' (or any non-'runc' value), a
+                  `--runtime <type>` flag is added so the container runs
+                  inside a Kata MicroVM. Defaults to 'runc'.
 
         Returns:
             str: The container ID of the started container.
@@ -217,6 +221,9 @@ class DockerRuntime(ContainerRuntime):
                 - memory_limit (str): Memory limit (default '512m').
                 - cpu_limit (str): CPU limit (default '1').
                 - network (str): Network mode (default 'none').
+                - runtime_type (str): Container runtime ('runc' or 'kata').
+                  Adds `--runtime <type>` for non-'runc' values so the
+                  container runs inside a Kata MicroVM. Default 'runc'.
 
         Returns:
             str: The container ID of the started container.
@@ -226,6 +233,11 @@ class DockerRuntime(ContainerRuntime):
         """
         container_name = f"job-{uuid.uuid4()}"
         cmd = [self._binary, "run", "-d", "--name", container_name]
+        # Container runtime selection (e.g. 'kata' MicroVM isolation). 'runc' is
+        # the default, so the flag is only emitted for non-default values.
+        runtime_type = opts.get("runtime_type", "runc")
+        if runtime_type and runtime_type != "runc":
+            cmd += ["--runtime", runtime_type]
         # Security flags
         cmd += ["--read-only", "--user", "nobody"]
         cmd += ["--cap-drop", "ALL"]

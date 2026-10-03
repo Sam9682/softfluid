@@ -28,7 +28,7 @@ print_warning() {
 # variables for non-interactive/CI runs; otherwise the user is prompted
 # (when a TTY is attached) and may accept these defaults by pressing Enter.
 DEFAULT_PLTF_FOLDER="opcp-explorer"
-DEFAULT_PLTF_NAME="OPCP-Explorer_AI_SharedGPU_Docker_Serverless"
+DEFAULT_PLTF_NAME="OPCP-explorer"
 DEFAULT_REPO_URL="https://github.com/Sam9682/opcp-explorer.git"
 DEFAULT_SUBMODULE_URL="git@github.com:Sam9682/ai-swautomorph--shared.git"
 
@@ -226,6 +226,14 @@ unzstd kata-static-3.32.0-amd64.tar.zst
 sudo tar xvf kata-static-3.32.0-amd64.tar > /dev/null 2>&1
 sudo mv ./opt/kata /opt/
 sudo mkdir -p /etc/docker
+# Register the 'kata' runtime with the Docker daemon. The "runtimeType" key
+# pointing at the containerd-shim-kata-v2 binary matches the official Kata
+# "how-to-use-kata-with-docker" guide for the Go runtime (requires Docker v26+
+# with Kata >= 3.29.0; this script installs 3.32.0). Once configured, the
+# platform launches containers with `docker run --runtime kata ...` whenever the
+# admin selects the 'kata' runtime type in Settings.
+# Verify after install with:  docker info | grep -i kata
+#                             docker run --runtime kata --rm hello-world
 sudo tee /etc/docker/daemon.json > /dev/null <<EOF
 {
     "runtimes": {

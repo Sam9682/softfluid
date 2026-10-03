@@ -127,6 +127,63 @@ class TestDockerRuntimeRunContainer:
 
     @patch("src.serverless.container_runtime.uuid.uuid4")
     @patch("src.serverless.container_runtime.subprocess.run")
+    def test_run_container_kata_runtime_adds_flag(self, mock_run, mock_uuid):
+        mock_uuid.return_value = "test-uuid"
+        mock_run.return_value = MagicMock(returncode=0, stdout="cid\n", stderr="")
+        rt = DockerRuntime()
+        rt.run_container(
+            image="alpine:latest",
+            command=["echo", "hello"],
+            env={},
+            timeout=60,
+            runtime_type="kata",
+        )
+
+        cmd = mock_run.call_args[0][0]
+        assert "--runtime" in cmd
+        idx = cmd.index("--runtime")
+        assert cmd[idx + 1] == "kata"
+        # The runtime flag should come right after the run -d --name <name> prefix
+        assert idx == 5
+        # Security flags must still be present
+        assert "--read-only" in cmd
+        assert "--cap-drop" in cmd
+
+    @patch("src.serverless.container_runtime.uuid.uuid4")
+    @patch("src.serverless.container_runtime.subprocess.run")
+    def test_run_container_runc_omits_runtime_flag(self, mock_run, mock_uuid):
+        mock_uuid.return_value = "test-uuid"
+        mock_run.return_value = MagicMock(returncode=0, stdout="cid\n", stderr="")
+        rt = DockerRuntime()
+        rt.run_container(
+            image="alpine:latest",
+            command=["echo", "hello"],
+            env={},
+            timeout=60,
+            runtime_type="runc",
+        )
+
+        cmd = mock_run.call_args[0][0]
+        assert "--runtime" not in cmd
+
+    @patch("src.serverless.container_runtime.uuid.uuid4")
+    @patch("src.serverless.container_runtime.subprocess.run")
+    def test_run_container_default_omits_runtime_flag(self, mock_run, mock_uuid):
+        mock_uuid.return_value = "test-uuid"
+        mock_run.return_value = MagicMock(returncode=0, stdout="cid\n", stderr="")
+        rt = DockerRuntime()
+        rt.run_container(
+            image="alpine:latest",
+            command=["echo", "hello"],
+            env={},
+            timeout=60,
+        )
+
+        cmd = mock_run.call_args[0][0]
+        assert "--runtime" not in cmd
+
+    @patch("src.serverless.container_runtime.uuid.uuid4")
+    @patch("src.serverless.container_runtime.subprocess.run")
     def test_run_container_failure_raises_runtime_error(self, mock_run, mock_uuid):
         mock_uuid.return_value = "test-uuid"
         mock_run.return_value = MagicMock(

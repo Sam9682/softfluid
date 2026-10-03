@@ -4,11 +4,19 @@ import psycopg2.pool
 import threading
 import time
 import os
+import logging
 import configparser
 from contextlib import contextmanager
 from werkzeug.security import generate_password_hash
 from .config_postgres import get_database_config, AI_ENGINE
 from .query_converter import convert_sqlite_to_postgres_query
+
+logger = logging.getLogger(__name__)
+
+# Allowed container runtime types. Anything else is rejected and falls back to
+# 'runc' to prevent arbitrary values being passed to `docker run --runtime`.
+ALLOWED_RUNTIME_TYPES = {'runc', 'kata'}
+DEFAULT_RUNTIME_TYPE = 'runc'
 
 # Load deploy.ini configuration
 def load_deploy_config():
@@ -736,3 +744,39 @@ def get_config_value(key, parent=None, default_value=None):
         (key, parent, parent), fetch_one=True
     )
     return result[0] if result else default_value
+
+
+def _sanitize_runtime_type(value):
+    """Validate a container runtime type against the allowed whitelist.
+
+    This function is intentionally free of Flask/DB dependencies so that the
+    serverless worker (a separate process) can import and reuse it.
+
+    Args:
+        value: The raw runtime type value (e.g. from configuration).
+
+    Returns:
+        str: ``value`` if it is an allowed runtime type, otherwise
+        ``'runc'`` (the safe default). A warning is logged on fallback.
+    """
+    if value in ALLOWED_RUNTIME_TYPES:
+        return value
+    if value not in (None, '', DEFAULT_RUNTIME_TYPE):
+        logger.warning(
+            "Invalid runtime_type %r; falling back to %r. Allowed values: %s",
+            value, DEFAULT_RUNTIME_TYPE, sorted(ALLOWED_RUNTIME_TYPES),
+        )
+    return DEFAULT_RUNTIME_TYPE
+
+
+def get_runtime_type():
+    """Resolve the configured container runtime type, validated.
+
+    Reads the top-level ``runtime_type`` configuration value and sanitizes it
+    against the allowed whitelist. Returns ``'runc'`` when unset or invalid.
+
+    Returns:
+        str: Either ``'runc'`` or ``'kata'``.
+    """
+    value = get_config_value('runtime_type', None, DEFAULT_RUNTIME_TYPE)
+    return _sanitize_runtime_type(value)

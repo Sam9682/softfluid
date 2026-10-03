@@ -299,7 +299,35 @@ The platform supports two container runtime types, configurable from the **Setti
 - Select the desired runtime type (`runc` or `kata`) from the dropdown
 - Click "Save Runtime Type"
 
-The `runtime_type` setting applies to application deployments and serverless Docker job execution across all servers managed by the platform.
+**How it is applied:** When `kata` is selected, the platform adds `--runtime kata`
+to the container launch across all three launch paths so containers boot inside a
+Kata MicroVM:
+- **Orchestrator replica services** — the `docker run` command built in
+  `src/orchestrator.py` gains `--runtime kata`.
+- **Serverless Docker jobs** — the worker launches job containers with
+  `--runtime kata`. The worker reads `runtime_type` **once at startup**, so a
+  worker restart is required to pick up a change.
+- **Git-based application deployments** — the platform passes the runtime type to
+  each app's `deployApp.sh` both as a trailing positional argument and via the
+  `RUNTIME_TYPE` environment variable.
+
+The value is validated against an allow-list (`runc`, `kata`); any other value
+falls back to `runc`. Selecting `runc` (the Docker default) emits no `--runtime`
+flag, so behavior is unchanged.
+
+**`deployApp.sh` contract:** scripts receive the runtime type as the extra
+trailing positional argument after the user email, and as `$RUNTIME_TYPE` in the
+environment. To honor it, a script can run, for example:
+
+```bash
+docker run --runtime "${RUNTIME_TYPE:-runc}" ...
+```
+
+Scripts that ignore the extra argument and env var continue to work unchanged.
+
+> **Prerequisite:** the `kata` runtime must be registered with the Docker daemon
+> on each server (handled by `init_pltf.sh`). Verify with `docker info` (look for
+> `kata` under Runtimes) and `docker run --runtime kata hello-world`.
 
 ### Dynamic Nginx Locations
 ```bash

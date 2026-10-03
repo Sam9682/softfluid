@@ -8,7 +8,7 @@ import requests
 import logging
 import psycopg2
 from contextlib import contextmanager
-from .database_postgres import db_manager
+from .database_postgres import db_manager, get_runtime_type
 
 logger = logging.getLogger(__name__)
 
@@ -282,6 +282,13 @@ class LightOrchestrator:
 
         # Build docker run command
         cmd = ['docker', 'run', '-d', '--name', instance_id]
+
+        # Select container runtime (e.g. 'kata' MicroVM isolation). 'runc' is
+        # the Docker default, so the flag is only emitted for non-default values.
+        runtime_type = get_runtime_type()
+        if runtime_type != 'runc':
+            logger.debug(f"Using container runtime '{runtime_type}' for {instance_id}")
+            cmd.extend(['--runtime', runtime_type])
 
         # Add port mappings
         if ports:

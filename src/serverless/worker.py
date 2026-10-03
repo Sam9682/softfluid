@@ -24,6 +24,45 @@ from src.serverless.log_cleanup import cleanup_old_logs
 logger = logging.getLogger(__name__)
 
 
+def resolve_runtime_type(db_config: Dict[str, Any]) -> str:
+    """Read and validate the configured container runtime type from PostgreSQL.
+
+    The serverless worker is a separate process that connects to PostgreSQL via
+    psycopg2 directly (it does not use the Flask ``db_manager``). This reads the
+    top-level ``runtime_type`` configuration value once and sanitizes it against
+    the shared whitelist. On any error it defaults to ``'runc'``.
+
+    Args:
+        db_config: PostgreSQL connection parameters.
+
+    Returns:
+        str: Either ``'runc'`` or ``'kata'``.
+    """
+    try:
+        # Import only the pure sanitizer (no Flask dependencies). Done inside
+        # the try so an import failure also falls back safely to 'runc'.
+        from src.database_postgres import _sanitize_runtime_type
+
+        conn = psycopg2.connect(**db_config)
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT value FROM configuration "
+                    "WHERE key = 'runtime_type' AND parent IS NULL"
+                )
+                row = cursor.fetchone()
+        finally:
+            conn.close()
+        value = row[0] if row else None
+        return _sanitize_runtime_type(value)
+    except Exception as e:
+        logger.warning(
+            "Could not resolve runtime_type from database (%s); defaulting to 'runc'",
+            e,
+        )
+        return "runc"
+
+
 class CancellationError(Exception):
     """Raised when a job is detected as cancelled during execution."""
     pass
@@ -51,6 +90,7 @@ class ServerlessWorker:
         runtime: ContainerRuntime,
         db_config: Dict[str, Any],
         registry_whitelist: Optional[list] = None,
+        runtime_type: str = "runc",
     ) -> None:
         """Initialize the ServerlessWorker.
 
@@ -59,10 +99,13 @@ class ServerlessWorker:
             runtime: ContainerRuntime instance for executing containers.
             db_config: Database connection parameters (host, port, dbname, user, password).
             registry_whitelist: List of approved registries. Defaults to config value.
+            runtime_type: Container runtime to use ('runc' or 'kata'). Resolved
+                once at worker startup; a restart is required to change it.
         """
         self.worker_id = worker_id
         self.runtime = runtime
         self.db_config = db_config
+        self.runtime_type = runtime_type
         self.registry_whitelist = (
             registry_whitelist
             if registry_whitelist is not None
@@ -226,6 +269,7 @@ class ServerlessWorker:
                 memory_limit=SERVERLESS_CONFIG['default_memory_limit'],
                 cpu_limit=SERVERLESS_CONFIG['default_cpu_limit'],
                 network='none',
+                runtime_type=self.runtime_type,
             )
 
             # 4. Wait for completion with timeout and cancellation checks
@@ -587,11 +631,17 @@ def main() -> None:
         "password": os.environ.get("POSTGRES_PASSWORD", "swautomorph_password"),
     }
 
+    # Resolve the configured container runtime type once at startup.
+    # A worker restart is required to pick up a configuration change.
+    runtime_type = resolve_runtime_type(db_config)
+    logger.info("Using container runtime type: %s", runtime_type)
+
     # Create worker instance
     worker = ServerlessWorker(
         worker_id=worker_id,
         runtime=runtime,
         db_config=db_config,
+        runtime_type=runtime_type,
     )
 
     # Signal handler for graceful shutdown

@@ -57,7 +57,7 @@ USE_POSTGRES = os.environ.get('USE_POSTGRES', 'true').lower() == 'true'
 
 # Use PostgreSQL by default
 try:
-    from src.database_postgres import db_manager as pg_db_manager, init_db as pg_init_db
+    from src.database_postgres import db_manager as pg_db_manager, init_db as pg_init_db, get_runtime_type
     db_manager = pg_db_manager
     init_db = pg_init_db
     print("Using PostgreSQL database")
@@ -1486,6 +1486,13 @@ def _handle_app_action(user_id, app_name, action, data):
     user_name = f"{user_details[2] or ''} {user_details[3] or ''}" if user_details else 'User'
     user_email = user_details[1] if user_details else 'user@example.com'
     
+    # Resolve the configured container runtime ('runc' or 'kata'). It is passed
+    # to deployApp.sh both as a trailing positional arg and as the RUNTIME_TYPE
+    # env var so per-app scripts can run `docker run --runtime "$RUNTIME_TYPE"`.
+    # Scripts that ignore the extra arg/env continue to work unchanged.
+    runtime_type = get_runtime_type()
+    deploy_env = {**os.environ, 'RUNTIME_TYPE': runtime_type}
+
     # Execute action
     if data.get('stream', False):
         def generate():
@@ -1493,8 +1500,8 @@ def _handle_app_action(user_id, app_name, action, data):
             ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
             try:
                 process = subprocess.Popen(
-                    [deploy_script, action, str(session['user_id']), user_name, user_email],
-                    cwd=deploy_path, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    [deploy_script, action, str(session['user_id']), user_name, user_email, runtime_type],
+                    cwd=deploy_path, env=deploy_env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                     text=True, bufsize=1
                 )
                 for line in iter(process.stdout.readline, ''):
@@ -1517,8 +1524,8 @@ def _handle_app_action(user_id, app_name, action, data):
         return Response(stream_with_context(generate()), mimetype='text/event-stream',
                        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
     else:
-        result = subprocess.run([deploy_script, action, str(session['user_id']), user_name, user_email], 
-                              cwd=deploy_path, capture_output=True, text=True, timeout=TIMEOUT_SUBPROCESS_RUN)
+        result = subprocess.run([deploy_script, action, str(session['user_id']), user_name, user_email, runtime_type], 
+                              cwd=deploy_path, env=deploy_env, capture_output=True, text=True, timeout=TIMEOUT_SUBPROCESS_RUN)
         
         output_parts = []
         if result.stdout and result.stdout.strip():
