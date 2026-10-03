@@ -5,8 +5,8 @@ with values driven from conf/deploy.ini. Two things are deliberately allowed
 and therefore NOT flagged by this guard:
 
   1. The canonical default *value* of the configurable parameters:
-       - the folder slug ``opcp-explorer``
-       - the display-name default ``OPCP-Explorer_AI_SharedGPU_Docker_Serverless``
+       - the folder slug ``agentic-ai-pltf``
+       - the display-name default ``agentic-ai-pltf_AI_SharedGPU_Docker_Serverless``
      These are the shipped defaults/fallbacks (deploy.ini, env defaults,
      fallback returns, and the tests that validate them).
 
@@ -14,10 +14,10 @@ and therefore NOT flagged by this guard:
      share the ``opcp`` prefix (e.g. opcp-serverless-brik). Renaming those would
      break the git clones, so these paths are out of scope.
 
-What the guard forbids is the free-standing marketing brand ``OPCP-Explorer``
+What the guard forbids is the free-standing marketing brand ``agentic-ai-pltf``
 used as a product name (in prose, comments, docstrings, banners, UI). That form
-is detected as ``OPCP-Explorer`` NOT immediately followed by ``_`` (the default
-display-name value uses ``OPCP-Explorer_AI_...``).
+is detected as ``agentic-ai-pltf`` NOT immediately followed by ``_`` (the default
+display-name value uses ``agentic-ai-pltf_AI_...``).
 """
 
 import os
@@ -25,10 +25,10 @@ import re
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Brand prose = 'OPCP-Explorer' not immediately followed by '_' (which would make
+# Brand prose = 'agentic-ai-pltf' not immediately followed by '_' (which would make
 # it the allowed display-name default value) and not '.md'/'.pdf' (old-filename
 # negative assertions in sibling tests reference the removed artifacts on purpose).
-BRAND_PROSE = re.compile(r'OPCP-Explorer(?![_\w])(?!\.md)(?!\.pdf)')
+BRAND_PROSE = re.compile(r'agentic-ai-pltf(?![_\w])(?!\.md)(?!\.pdf)')
 
 # Files/dirs that are allowed to mention the brand (catalog, this guard, and the
 # sibling tests that assert the old branded artifacts were removed).
@@ -70,7 +70,7 @@ def test_no_brand_prose_outside_allowlist():
         except OSError:
             continue
     assert not offenders, (
-        'Found free-standing OPCP-Explorer brand prose (should be driven from '
+        'Found free-standing agentic-ai-pltf brand prose (should be driven from '
         'PLTF_NAME or use the canonical default value):\n' + '\n'.join(offenders)
     )
 

@@ -68,14 +68,14 @@ WARN="${YELLOW}[WARN]${NC}"
 INFO="${BLUE}[INFO]${NC}"
 
 # Global Variables (with fallback defaults)
-NAME_OF_APPLICATION=${NAME_OF_APPLICATION:-"opcp-explorer"}
+NAME_OF_APPLICATION=${NAME_OF_APPLICATION:-"agentic-ai-pltf"}
 APPLICATION_IDENTITY_NUMBER=${APPLICATION_IDENTITY_NUMBER:-0}
 RANGE_START_CONTROLPLAN=${RANGE_START_CONTROLPLAN:-80}
 RANGE_RESERVED_CONTROLPLAN=${RANGE_RESERVED_CONTROLPLAN:-0}
 S3_BUCKET_NAME=${S3_BUCKET_NAME:-"opcp-s3"}
-PLTF_FOLDER=${PLTF_FOLDER:-"opcp-explorer"}
+PLTF_FOLDER=${PLTF_FOLDER:-"agentic-ai-pltf"}
 # Display name shown in banners/usage; read from PLTF_NAME in deploy.ini.
-PLTF_NAME=${PLTF_NAME:-"OPCP-Explorer_AI_SharedGPU_Docker_Serverless"}
+PLTF_NAME=${PLTF_NAME:-"agentic-ai-pltf_AI_SharedGPU_Docker_Serverless"}
 LINUX_USER_INSTALLATION=${LINUX_USER_INSTALLATION:-"ubuntu"}
 
 # Global Parameters (command line args override config)
@@ -485,7 +485,7 @@ import os
 from simple_term_menu import TerminalMenu
 
 s3_bucket = os.environ.get('S3_BUCKET_NAME', 'opcp-s3')
-app_name = os.environ.get('NAME_OF_APPLICATION', 'opcp-explorer')
+app_name = os.environ.get('NAME_OF_APPLICATION', 'agentic-ai-pltf')
 options = ["Local backups (./softfluid/db/backup)", f"Remote S3 backups (s3://{s3_bucket}/{app_name}/db/backup)"]
 terminal_menu = TerminalMenu(
     options,

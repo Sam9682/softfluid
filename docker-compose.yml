@@ -2,7 +2,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: ${PLTF_FOLDER:-opcp-explorer}-postgres
+    container_name: ${PLTF_FOLDER:-agentic-ai-pltf}-postgres
     environment:
       POSTGRES_DB: ai_swautomorph
       POSTGRES_USER: swautomorph
@@ -27,7 +27,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ${PLTF_FOLDER:-opcp-explorer}-app
+    container_name: ${PLTF_FOLDER:-agentic-ai-pltf}-app
     ports:
       - "${HTTP_PORT:-6000}:80"
       - "${HTTP_PORT2:-6002}:80"
@@ -60,7 +60,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: ${PLTF_FOLDER:-opcp-explorer}-nginx
+    container_name: ${PLTF_FOLDER:-agentic-ai-pltf}-nginx
     ports:
       - "${HTTPS_PORT:-6001}:443"
       - "${HTTPS_PORT2:-6003}:443"
@@ -92,7 +92,7 @@ services:
 
   gitea:
     image: gitea/gitea:1.21.3
-    container_name: ${PLTF_FOLDER:-opcp-explorer}-gitea
+    container_name: ${PLTF_FOLDER:-agentic-ai-pltf}-gitea
     ports:
       - "3000:3000"
     volumes:

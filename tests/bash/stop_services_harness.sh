@@ -186,7 +186,7 @@ case "$MODE" in
 esac
 
 # Minimal globals referenced by the extracted functions.
-NAME_OF_APPLICATION="opcp-explorer"
+NAME_OF_APPLICATION="agentic-ai-pltf"
 S3_BUCKET_NAME="test-bucket"
 KEEP_GITEA_RUNNING="$KEEP_GITEA"
 OK="OK"

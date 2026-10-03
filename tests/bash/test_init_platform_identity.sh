@@ -49,9 +49,9 @@ source "$TARGET_SCRIPT"
 ) > /tmp/init_identity_defaults.$$ 2>/dev/null
 IFS='|' read -r f n r s < /tmp/init_identity_defaults.$$
 rm -f /tmp/init_identity_defaults.$$
-assert_eq "default_fallback.folder" "opcp-explorer" "$f"
-assert_eq "default_fallback.name"   "OPCP-Explorer_AI_SharedGPU_Docker_Serverless" "$n"
-assert_eq "default_fallback.repo"   "https://github.com/Sam9682/opcp-explorer.git" "$r"
+assert_eq "default_fallback.folder" "agentic-ai-pltf" "$f"
+assert_eq "default_fallback.name"   "agentic-ai-pltf_AI_SharedGPU_Docker_Serverless" "$n"
+assert_eq "default_fallback.repo"   "https://github.com/Sam9682/agentic-ai-pltf.git" "$r"
 assert_eq "default_fallback.submodule" "git@github.com:Sam9682/ai-swautomorph--shared.git" "$s"
 
 # ---------------------------------------------------------------------------
@@ -75,7 +75,7 @@ assert_eq "env_override.submodule" "git@example.com:acme/shared.git" "$s"
 # ---------------------------------------------------------------------------
 # Part C - slug validation via is_valid_slug().
 # ---------------------------------------------------------------------------
-for good in "opcp-explorer" "acme-cloud" "a" "x1" "my-platform-2"; do
+for good in "agentic-ai-pltf" "acme-cloud" "a" "x1" "my-platform-2"; do
     if is_valid_slug "$good"; then pass "slug_valid.$good"; else fail "slug_valid.$good" "rejected a valid slug"; fi
 done
 for bad in "" "Upper" "with space" "under_score" "-leading" "has/slash"; do
@@ -98,8 +98,8 @@ WORK="$(mktemp -d)"
 INI="$WORK/deploy.ini"
 cat > "$INI" <<'EOF'
 DOMAIN=opcp-psmc.com
-PLTF_NAME=OPCP-Explorer_AI_SharedGPU_Docker_Serverless
-PLTF_FOLDER=opcp-explorer
+PLTF_NAME=agentic-ai-pltf_AI_SharedGPU_Docker_Serverless
+PLTF_FOLDER=agentic-ai-pltf
 VERSION=0.0.1
 LINUX_USER_INSTALLATION=psmc
 EOF
@@ -140,9 +140,9 @@ cat > "$GINI" <<'EOF'
 
 DOMAIN=opcp-psmc.com
 # PLTF_NAME=Commented Out Name
-PLTF_NAME=OPCP-Explorer_AI_SharedGPU_Docker_Serverless
+PLTF_NAME=agentic-ai-pltf_AI_SharedGPU_Docker_Serverless
 EMPTY_KEY=
-REPO_URL=https://github.com/Sam9682/opcp-explorer.git?ref=main&x=1
+REPO_URL=https://github.com/Sam9682/agentic-ai-pltf.git?ref=main&x=1
 
 VERSION=0.0.1
 EOF
@@ -157,10 +157,10 @@ assert_eq "get.empty_value_empty" "" "$(get_ini_value "$GINI" "EMPTY_KEY")"
 assert_eq "get.present_value" "opcp-psmc.com" "$(get_ini_value "$GINI" "DOMAIN")"
 
 # Commented key (# PLTF_NAME=...) is ignored; the uncommented line is read.
-assert_eq "get.comment_ignored" "OPCP-Explorer_AI_SharedGPU_Docker_Serverless" "$(get_ini_value "$GINI" "PLTF_NAME")"
+assert_eq "get.comment_ignored" "agentic-ai-pltf_AI_SharedGPU_Docker_Serverless" "$(get_ini_value "$GINI" "PLTF_NAME")"
 
 # Value containing '=' (and '&') survives intact (cut -f2- keeps the remainder).
-assert_eq "get.value_with_equals" "https://github.com/Sam9682/opcp-explorer.git?ref=main&x=1" "$(get_ini_value "$GINI" "REPO_URL")"
+assert_eq "get.value_with_equals" "https://github.com/Sam9682/agentic-ai-pltf.git?ref=main&x=1" "$(get_ini_value "$GINI" "REPO_URL")"
 
 # Round-trip: a value written by set_ini_value is read back identically.
 RT="$GWORK/roundtrip.ini"
@@ -363,9 +363,9 @@ while IFS='|' read -r key default_var fallback; do
         fail "property3.fallback_collapse.$key" "$prop_detail"
     fi
 done <<'EOF'
-PLTF_FOLDER|DEFAULT_PLTF_FOLDER|opcp-explorer
-PLTF_NAME|DEFAULT_PLTF_NAME|OPCP-explorer
-REPO_URL|DEFAULT_REPO_URL|https://github.com/Sam9682/opcp-explorer.git
+PLTF_FOLDER|DEFAULT_PLTF_FOLDER|agentic-ai-pltf
+PLTF_NAME|DEFAULT_PLTF_NAME|agentic-ai-pltf
+REPO_URL|DEFAULT_REPO_URL|https://github.com/Sam9682/agentic-ai-pltf.git
 SUBMODULE_URL|DEFAULT_SUBMODULE_URL|git@github.com:Sam9682/ai-swautomorph--shared.git
 EOF
 
@@ -386,7 +386,7 @@ rm -rf "$FWORK"
 # --- I.1  conf/deploy.ini carries the required values and existing keys (2.1-2.3).
 DEPLOY_INI="$REPO_ROOT/conf/deploy.ini"
 assert_eq "deploy_ini.repo_url" \
-    "https://github.com/Sam9682/opcp-explorer.git" \
+    "https://github.com/Sam9682/agentic-ai-pltf.git" \
     "$(get_ini_value "$DEPLOY_INI" "REPO_URL")"
 assert_eq "deploy_ini.submodule_url" \
     "git@github.com:Sam9682/ai-swautomorph--shared.git" \
@@ -419,9 +419,9 @@ fallbacks="$(
         "$DEFAULT_REPO_URL" "$DEFAULT_SUBMODULE_URL"
 )"
 IFS='|' read -r df dn dr ds <<< "$fallbacks"
-assert_eq "fallback.literal.folder"    "opcp-explorer" "$df"
-assert_eq "fallback.literal.name"      "OPCP-explorer" "$dn"
-assert_eq "fallback.literal.repo"      "https://github.com/Sam9682/opcp-explorer.git" "$dr"
+assert_eq "fallback.literal.folder"    "agentic-ai-pltf" "$df"
+assert_eq "fallback.literal.name"      "agentic-ai-pltf" "$dn"
+assert_eq "fallback.literal.repo"      "https://github.com/Sam9682/agentic-ai-pltf.git" "$dr"
 assert_eq "fallback.literal.submodule" "git@github.com:Sam9682/ai-swautomorph--shared.git" "$ds"
 
 # --- I.3  Sourcing loads the new functions, returns 0, and the guard is present (5.1, 5.3).

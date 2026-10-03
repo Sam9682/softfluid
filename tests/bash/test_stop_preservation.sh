@@ -145,7 +145,7 @@ pg_isready() { [ "$FAIL_MODE" = "pg_isready" ] && return 1; return 0; }
 pg_dump()    { [ "$FAIL_MODE" = "pg_dump" ] && return 1; return 0; }
 aws()        { return 0; }
 get_server_ip() { echo "127.0.0.1"; }
-NAME_OF_APPLICATION="opcp-explorer"; S3_BUCKET_NAME="test-bucket"; OK="OK"; ERROR="ERR"
+NAME_OF_APPLICATION="agentic-ai-pltf"; S3_BUCKET_NAME="test-bucket"; OK="OK"; ERROR="ERR"
 # shellcheck disable=SC1090
 source "$SANDBOX/fn.sh"
 backup_database >/dev/null 2>&1
@@ -194,7 +194,7 @@ run_backup_logs() {
 set -e
 cd "$SANDBOX"
 aws() { return 0; }        # logs S3 sync succeeds
-NAME_OF_APPLICATION="opcp-explorer"; S3_BUCKET_NAME="test-bucket"
+NAME_OF_APPLICATION="agentic-ai-pltf"; S3_BUCKET_NAME="test-bucket"
 OK="OK"; WARN="WARN"; ERROR="ERR"
 if [ "$HAVE_LOGS" = "yes" ]; then
     mkdir -p ./logs

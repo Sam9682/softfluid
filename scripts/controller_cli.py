@@ -767,7 +767,7 @@ def install_as_systemctl_service():
     # Resolve install identity and render the unit via the shared helper so the
     # live install and the committed fallback artifact never diverge. User= and
     # the /home/<user>/<folder> paths come from LINUX_USER_INSTALLATION and
-    # PLTF_FOLDER in conf/deploy.ini (canonical fallbacks psmc / opcp-explorer).
+    # PLTF_FOLDER in conf/deploy.ini (canonical fallbacks psmc / agentic-ai-pltf).
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from controlplan_service import resolve_service_identity, render_controlplan_unit
 

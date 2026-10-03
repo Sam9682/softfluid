@@ -1,7 +1,7 @@
 """Route test for the renamed platform-overview doc.
 
 The dashboard "Platform Overview" menu entry links to
-``/docs/PLATFORM_OVERVIEW.md`` (previously the branded ``opcp-explorer.md``).
+``/docs/PLATFORM_OVERVIEW.md`` (previously the branded ``agentic-ai-pltf.md``).
 This test verifies the renamed file resolves through ``view_doc`` and that the
 old branded filename no longer exists in docs/.
 """
@@ -31,7 +31,7 @@ def test_platform_overview_doc_file_exists():
 
 
 def test_old_branded_doc_removed():
-    assert not os.path.exists(os.path.join(DOCS_DIR, 'opcp-explorer.md'))
+    assert not os.path.exists(os.path.join(DOCS_DIR, 'agentic-ai-pltf.md'))
 
 
 def test_view_doc_resolves_platform_overview(client):
@@ -45,5 +45,5 @@ def test_view_doc_resolves_platform_overview(client):
 
 
 def test_view_doc_old_filename_404(client):
-    resp = client.get('/docs/opcp-explorer.md')
+    resp = client.get('/docs/agentic-ai-pltf.md')
     assert resp.status_code == 404

@@ -17,7 +17,7 @@ Each of the four identity values is resolved independently through a fixed prece
 2. Otherwise the matching key in `conf/deploy.ini` is used (if present and non-empty).
 3. Otherwise a built-in hardcoded fallback is used, so the script never breaks on a fresh or incomplete config.
 
-The hardcoded fallbacks are `opcp-explorer` (PLTF_FOLDER), `OPCP-explorer` (PLTF_NAME), `https://github.com/Sam9682/opcp-explorer.git` (REPO_URL) and `git@github.com:Sam9682/ai-swautomorph--shared.git` (SUBMODULE_URL). The shipped `conf/deploy.ini` already defines these keys (its `PLTF_NAME` is the longer deployment-specific value, which takes precedence over the fallback), and every parameter in that file carries an explanatory comment.
+The hardcoded fallbacks are `agentic-ai-pltf` (PLTF_FOLDER), `agentic-ai-pltf` (PLTF_NAME), `https://github.com/Sam9682/agentic-ai-pltf.git` (REPO_URL) and `git@github.com:Sam9682/ai-swautomorph--shared.git` (SUBMODULE_URL). The shipped `conf/deploy.ini` already defines these keys (its `PLTF_NAME` is the longer deployment-specific value, which takes precedence over the fallback), and every parameter in that file carries an explanatory comment.
 
 ## Prerequisites
 
@@ -26,7 +26,7 @@ The hardcoded fallbacks are `opcp-explorer` (PLTF_FOLDER), `OPCP-explorer` (PLTF
 | OS          | Ubuntu 22.04+ (tested on OVHcloud VPS/dedicated)           |
 | User        | A non-root user with `sudo` privileges                     |
 | Network     | Internet access (public interface)                         |
-| SSH key     | Configured for `git@github.com:Sam9682/opcp-explorer.git` |
+| SSH key     | Configured for `git@github.com:Sam9682/agentic-ai-pltf.git` |
 | GPU (optional) | NVIDIA H100, A100, or A30 for MIG shared GPU features   |
 
 ## What the script installs
@@ -58,9 +58,9 @@ The script first prompts for the platform identity, then runs the install steps.
 
 | Prompt | Default | Written to |
 |--------|---------|------------|
-| Platform folder slug (`PLTF_FOLDER`) | `opcp-explorer` | install dir, container prefixes, `conf/deploy.ini` |
-| Platform display name (`PLTF_NAME`) | `OPCP-Explorer_AI_SharedGPU_Docker_Serverless` | web UI, generated docs, `conf/deploy.ini` |
-| Repository clone URL (`REPO_URL`) | `https://github.com/Sam9682/opcp-explorer.git` | the clone source |
+| Platform folder slug (`PLTF_FOLDER`) | `agentic-ai-pltf` | install dir, container prefixes, `conf/deploy.ini` |
+| Platform display name (`PLTF_NAME`) | `agentic-ai-pltf_AI_SharedGPU_Docker_Serverless` | web UI, generated docs, `conf/deploy.ini` |
+| Repository clone URL (`REPO_URL`) | `https://github.com/Sam9682/agentic-ai-pltf.git` | the clone source |
 | Shared submodule URL (`SUBMODULE_URL`) | `git@github.com:Sam9682/ai-swautomorph--shared.git` | the `shared` submodule source |
 
 The folder slug is validated (lowercase letters, digits and hyphens only); an invalid value is re-prompted, or aborts the run if it was pre-set via the environment.

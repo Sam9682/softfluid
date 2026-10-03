@@ -5,7 +5,7 @@ identity feature:
 
   * When conf/deploy.ini is present and defines a key, the stored value wins.
   * When the key (or the file) is missing/unreadable, the canonical fallback
-    is returned. The canonical fallback for the folder slug is ``opcp-explorer``
+    is returned. The canonical fallback for the folder slug is ``agentic-ai-pltf``
     - identical to gunicorn.conf.py, deployControlPlan.sh, start_app.sh and
     scripts/*.sh - so no entry point can silently diverge.
 """
@@ -52,14 +52,14 @@ def test_get_platform_folder_canonical_fallback_when_missing():
     with tempfile.TemporaryDirectory() as tmp:
         # No conf/deploy.ini written -> fallback path.
         with patch.object(cfg.os.path, 'abspath', return_value=_fake_src_file(tmp)):
-            assert cfg.get_platform_folder() == 'opcp-explorer'
+            assert cfg.get_platform_folder() == 'agentic-ai-pltf'
 
 
 def test_folder_fallback_matches_database_manager_default():
     """The config fallback and the database manager module default must agree
     so every entry point resolves to the same canonical name."""
     from src import database_postgres as dbp
-    assert dbp.NAME_OF_APPLICATION == 'opcp-explorer'
+    assert dbp.NAME_OF_APPLICATION == 'agentic-ai-pltf'
     with tempfile.TemporaryDirectory() as tmp:
         with patch.object(cfg.os.path, 'abspath', return_value=_fake_src_file(tmp)):
             assert cfg.get_platform_folder() == dbp.NAME_OF_APPLICATION

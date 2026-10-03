@@ -95,7 +95,19 @@ prompt_platform_identity() {
         fi
     fi
 
-    export PLTF_FOLDER PLTF_NAME REPO_URL SUBMODULE_URL
+    # Installation directory: the parent folder the platform is cloned into.
+    # The repository ends up at "${INSTALL_DIR%/}/${PLTF_FOLDER}". Defaults to
+    # "../" (one level above the current working directory).
+    if [ -z "${INSTALL_DIR:-}" ]; then
+        if [ -t 0 ]; then
+            read -r -p "Install location (parent folder) [${DEFAULT_INSTALL_DIR}]: " _input
+            INSTALL_DIR="${_input:-$DEFAULT_INSTALL_DIR}"
+        else
+            INSTALL_DIR="${DEFAULT_INSTALL_DIR}"
+        fi
+    fi
+
+    export PLTF_FOLDER PLTF_NAME REPO_URL SUBMODULE_URL INSTALL_DIR
 }
 
 # Rewrite a key=value pair in an INI file in place, preserving other keys.
@@ -157,10 +169,11 @@ _resolve_default() {
 # match (PLTF_FOLDER, PLTF_NAME, REPO_URL, SUBMODULE_URL) and the fallbacks
 # are the original hardcoded opcp strings.
 resolve_platform_defaults() {
-    DEFAULT_PLTF_FOLDER="$(_resolve_default  PLTF_FOLDER   PLTF_FOLDER   "opcp-explorer")"
-    DEFAULT_PLTF_NAME="$(_resolve_default    PLTF_NAME     PLTF_NAME     "OPCP-explorer")"
-    DEFAULT_REPO_URL="$(_resolve_default     REPO_URL      REPO_URL      "https://github.com/Sam9682/opcp-explorer.git")"
+    DEFAULT_PLTF_FOLDER="$(_resolve_default  PLTF_FOLDER   PLTF_FOLDER   "agentic-ai-pltf")"
+    DEFAULT_PLTF_NAME="$(_resolve_default    PLTF_NAME     PLTF_NAME     "agentic-ai-pltf")"
+    DEFAULT_REPO_URL="$(_resolve_default     REPO_URL      REPO_URL      "https://github.com/Sam9682/agentic-ai-pltf.git")"
     DEFAULT_SUBMODULE_URL="$(_resolve_default SUBMODULE_URL SUBMODULE_URL "git@github.com:Sam9682/ai-swautomorph--shared.git")"
+    DEFAULT_INSTALL_DIR="$(_resolve_default  INSTALL_DIR   INSTALL_DIR   "../")"
 }
 
 # Invoke the resolver once at load time, above the source guard, so the four
@@ -181,7 +194,7 @@ fi
 prompt_platform_identity
 
 echo -e "${BLUE}+==========================================+${NC}"
-echo -e "${BLUE}${NC}      ${PLTF_NAME} Platform Setup    ${BLUE}|${NC}"
+echo -e "${BLUE}${NC}      ${PLTF_NAME} Platform Setup    ${BLUE}${NC}"
 echo -e "${BLUE}+==========================================+${NC}"
 echo ""
 
@@ -224,12 +237,12 @@ print_step "Configuring network interface priorities..."
 if [ -f /etc/netplan/*.yaml ]; then
     NETPLAN_FILE=$(ls /etc/netplan/*.yaml | head -1)
     sudo cp $NETPLAN_FILE ${NETPLAN_FILE}.backup
-    
+
     # Detect interfaces and their IPs
     INTERFACES=$(ip -o link show | awk -F': ' '{print $2}' | grep -E '^e' | grep -v '@')
     PUBLIC_IF=""
     PRIVATE_IF=""
-    
+
     for iface in $INTERFACES; do
         IP=$(ip -4 addr show $iface | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -1)
         if [ -n "$IP" ]; then
@@ -241,12 +254,12 @@ if [ -f /etc/netplan/*.yaml ]; then
             fi
         fi
     done
-    
+
     # Generate netplan config
     echo "network:" | sudo tee $NETPLAN_FILE > /dev/null
     echo "  version: 2" | sudo tee -a $NETPLAN_FILE > /dev/null
     echo "  ethernets:" | sudo tee -a $NETPLAN_FILE > /dev/null
-    
+
     for iface in $INTERFACES; do
         echo "    $iface:" | sudo tee -a $NETPLAN_FILE > /dev/null
         echo "      dhcp4: true" | sudo tee -a $NETPLAN_FILE > /dev/null
@@ -258,7 +271,7 @@ if [ -f /etc/netplan/*.yaml ]; then
             echo "        route-metric: 200" | sudo tee -a $NETPLAN_FILE > /dev/null
         fi
     done
-    
+
     sudo netplan apply > /dev/null 2>&1
     print_success "Network priorities configured (public: 50, private: 200)"
 else
@@ -276,7 +289,6 @@ print_success "Docker installed"
 
 # Install Kata Containers
 print_step "Installing Kata Containers..."
-cd /tmp
 wget -q https://github.com/kata-containers/kata-containers/releases/download/3.32.0/kata-static-3.32.0-amd64.tar.zst
 unzstd kata-static-3.32.0-amd64.tar.zst
 sudo tar xvf kata-static-3.32.0-amd64.tar > /dev/null 2>&1
@@ -301,7 +313,6 @@ sudo tee /etc/docker/daemon.json > /dev/null <<EOF
 EOF
 sudo systemctl reload docker
 rm -f kata-static-3.32.0-amd64.tar.zst kata-static-3.32.0-amd64.tar
-cd - > /dev/null
 print_success "Kata Containers installed"
 
 # Install NVIDIA GPU Drivers and MIG Support
@@ -309,7 +320,7 @@ print_step "Installing NVIDIA GPU drivers..."
 sudo apt install -y nvidia-driver-550 nvidia-utils-550 > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     print_success "NVIDIA drivers installed"
-    
+
     print_step "Enabling MIG mode..."
     sudo nvidia-smi -mig 1 > /dev/null 2>&1
     if [ $? -eq 0 ]; then
@@ -317,12 +328,12 @@ if [ $? -eq 0 ]; then
     else
         print_warning "MIG mode could not be enabled (GPU may not support MIG)"
     fi
-    
+
     print_step "Installing NVIDIA Container Toolkit..."
     sudo apt install -y nvidia-container-toolkit > /dev/null 2>&1
     if [ $? -eq 0 ]; then
         print_success "NVIDIA Container Toolkit installed"
-        
+
         print_step "Verifying Docker GPU access..."
         timeout 30 docker run --rm --gpus '"device=0"' nvidia/cuda:12.3.0-base-ubuntu22.04 nvidia-smi > /dev/null 2>&1
         if [ $? -eq 0 ]; then
@@ -360,11 +371,20 @@ print_success "AWS credentials configured"
 
 # Clone repository
 print_step "Cloning ${PLTF_NAME} repository..."
-git clone "${REPO_URL}" "${PLTF_FOLDER}" > /dev/null 2>&1
-cd "${PLTF_FOLDER}"
+# Resolve the install destination: "${INSTALL_DIR}/${PLTF_FOLDER}". Strip any
+# trailing slash from INSTALL_DIR so the join never produces a double slash.
+INSTALL_PARENT="${INSTALL_DIR%/}"
+mkdir -p "${INSTALL_PARENT}"
+CLONE_DEST="${INSTALL_PARENT}/${PLTF_FOLDER}"
+git clone "${REPO_URL}" "${CLONE_DEST}" > /dev/null 2>&1
+cd "${CLONE_DEST}"
+# Capture an absolute path to the clone so repository-relative steps resolve
+# their targets regardless of the current working directory later in the run.
+REPO_DIR="$(pwd)"
+export REPO_DIR
 git submodule add "${SUBMODULE_URL}" shared > /dev/null 2>&1
 git submodule update --init --recursive > /dev/null 2>&1
-print_success "Repository cloned"
+print_success "Repository cloned into ${CLONE_DEST}"
 
 # Persist the collected platform identity into conf/deploy.ini so every
 # runtime consumer (config_postgres.py, gunicorn.conf.py, docker-compose.yml,
@@ -377,15 +397,21 @@ print_success "Platform identity written to conf/deploy.ini"
 
 # Setup Python environment
 print_step "Setting up Python virtual environment..."
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -q -r requirements.txt
+python3 -m venv "${REPO_DIR}/.venv"
+source "${REPO_DIR}/.venv/bin/activate"
+if ! pip install -q -r "${REPO_DIR}/requirements.txt"; then
+    print_error "Failed to install Python dependencies from ${REPO_DIR}/requirements.txt"
+    exit 1
+fi
 print_success "Python environment ready"
 
 # Final setup
 print_step "Final configuration..."
-mkdir -p logs
-chmod +x setup_modsecurity_config.sh
+mkdir -p "${REPO_DIR}/logs"
+if ! chmod +x "${REPO_DIR}/setup_modsecurity_config.sh"; then
+    print_error "Failed to make ${REPO_DIR}/setup_modsecurity_config.sh executable"
+    exit 1
+fi
 cd ~
 mkdir -p deployments
 cd deployments

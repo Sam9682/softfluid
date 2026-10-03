@@ -2,7 +2,7 @@
 
 The control-plan service unit must derive User= and the /home/<user>/<folder>
 paths from LINUX_USER_INSTALLATION and PLTF_FOLDER in conf/deploy.ini, with
-canonical fallbacks (psmc / opcp-explorer) when the file/keys are missing. The
+canonical fallbacks (psmc / agentic-ai-pltf) when the file/keys are missing. The
 committed artifact must stay in sync with those config values.
 """
 
@@ -31,7 +31,7 @@ def test_render_uses_configured_identity():
     assert 'ExecStart=/home/acmeuser/acme-cloud/scripts/start_swautomorph_controlplan.sh' in unit
     assert 'ExecStop=/home/acmeuser/acme-cloud/scripts/stop_swautomorph_controlplan.sh' in unit
     # No stray platform-identity literals from a different customer.
-    assert 'opcp-explorer' not in unit
+    assert 'agentic-ai-pltf' not in unit
     assert 'psmc' not in unit
 
 
@@ -50,7 +50,7 @@ def test_resolve_canonical_fallback_when_missing():
         missing = os.path.join(tmp, 'does-not-exist.ini')
         user, folder = cps.resolve_service_identity(config_path=missing)
         assert user == 'psmc'
-        assert folder == 'opcp-explorer'
+        assert folder == 'agentic-ai-pltf'
 
 
 def test_committed_artifact_matches_current_config():

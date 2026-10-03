@@ -95,4 +95,4 @@ def test_generate_pdf_html_injects_platform_name():
 def test_source_doc_exists():
     assert os.path.exists(os.path.join(DOCS_DIR, 'PLATFORM_OVERVIEW.md'))
     assert os.path.exists(os.path.join(DOCS_DIR, 'PLATFORM_MARKETING.md'))
-    assert not os.path.exists(os.path.join(DOCS_DIR, 'OPCP-Explorer.md'))
+    assert not os.path.exists(os.path.join(DOCS_DIR, 'agentic-ai-pltf.md'))
