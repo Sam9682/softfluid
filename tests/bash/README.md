@@ -392,3 +392,86 @@ ownership change was attempted — not merely that ownership happened to match.
 After the fix (Task 3.4) this same test is re-run and must still **PASS**: the
 helper's single bug-condition guard early-returns before any `chown` for every
 non-bug context, so ownership stays identical and `chown_calls` stays 0.
+
+## Focused unit / property / integration coverage (Task 4)
+
+Task 4 adds three focused test files that run against the **fixed**
+`init_pltf.sh` and must all PASS. They reuse the Task-1/2 harnesses where
+sensible and add dedicated harnesses only where finer control is needed. All
+ownership/EUID is virtualized by **fakeroot** (no real privilege required).
+
+### New files
+
+- `unit_harness.sh` + `test_init_ownership_unit.sh` — **UNIT** coverage for
+  `restore_invoking_user_ownership`. The harness sources the real script under
+  the source guard and installs (a) a `chown` wrapper that counts calls AND
+  records every target path (recorded to a temp file so counts survive the
+  command-substitution subshell the helper runs in) and (b) an optional
+  `getent` wrapper so the passwd-home resolution path can be driven WITHOUT the
+  `SIM_HOME` override. Cases:
+  - **U1** — no-op for each non-bug context: `EUID != 0`; `SUDO_USER` unset;
+    `SUDO_USER=root`. Zero chown calls, helper exit 0, ownership unchanged.
+    _(Requirements 3.1, 3.2)_
+  - **U2** — primary-group resolution via `id -gn`: invoking user `nobody`
+    (primary group `nogroup`) resolves to `nobody:nogroup`, NOT the naive
+    `nobody:nobody`. _(Requirement 2.4)_
+  - **U3** — home resolution uses the passwd entry, not `$HOME`: driven with
+    `SIM_HOME` UNSET and a `getent` wrapper whose passwd home (field 6) points
+    at the sandbox home, while `HOME=/root` and a decoy `/root`-style home is
+    present. Asserts the passwd-home `.aws`/`deployments` are the chown targets
+    and end owned by the invoking user, and the decoy `$HOME` is NEVER a chown
+    target — genuinely proving `$HOME` is not used. _(Requirements 2.1, 2.2)_
+  - **U4** — nonexistent `SUDO_USER` (absent from passwd under EUID 0): the
+    helper warns and skips, performs no chown, and returns success (does not
+    abort the install). _(Requirement 3.2)_
+
+- `property_harness.sh` + `test_init_ownership_property.sh` — **PROPERTY-BASED**
+  coverage. The harness builds a RANDOMLY SHAPED clone tree (seed-driven random
+  breadth/depth of dirs and files, plus the canonical `shared`/`.venv`/`logs`/
+  `conf/deploy.ini` structure) and reports the pre/post `owner:group` of EVERY
+  node recursively. Swept over seeds `{1, 7, 42, 101, 999}` (trees of ~18–32
+  nodes):
+  - **P1** — random BUG contexts (EUID 0, forced `root:root`, valid non-root
+    `SUDO_USER`): every node ends owned by the invoking `user:group`. Swept over
+    invoking users `{current user, nobody}` so the `id -gn` group resolution is
+    also pinned. _(Requirements 2.1, 2.2, 2.4)_
+  - **P2** — random NON-BUG contexts (`EUID != 0`, or `SUDO_USER` unset/`root`
+    under EUID 0): ownership is identical to the pre-run state (`post == pre`
+    for every node) AND `chown_calls == 0`. _(Requirements 3.1, 3.2)_
+
+- `integration_harness.sh` + `test_init_ownership_integration.sh` —
+  **INTEGRATION** coverage. The driver passes the REAL invoking user to the
+  harness via `REAL_INVOKER`/`REAL_INVOKER_GROUP` (the harness runs under
+  fakeroot where `id -un` would otherwise report `root`). Cases:
+  - **T1** — full ownership-restore flow: reuses `ownership_harness.sh` (mirror
+    tree `shared`/`.venv`/`logs`/`conf/deploy.ini` plus `~/.aws` and
+    `~/deployments/admin`) under a bug context; the whole tree flips to the
+    invoking user in one pass. _(Requirements 2.1, 2.2, 2.3)_
+  - **T2** — context-switching: the SAME sourced helper is invoked first under a
+    NON-BUG context (tree A, natural ownership → no-op, 0 chowns) then under a
+    BUG context (tree B, forced `root:root` → fully restored, 3 chowns:
+    `REPO_DIR` + `.aws` + `deployments`). Tree A stays untouched across both
+    calls; the trees are handled independently. _(Requirements 2.1, 3.1)_
+  - **T3** — sourcing side-effect-free: sourcing `init_pltf.sh` defines the
+    helper (`helper_defined=1`) WITHOUT running the installer body
+    (`body_ran=0`) and WITHOUT performing any chown (`chown_after_source=0`),
+    returning cleanly via the source guard. _(Requirements 3.3, 3.4, 3.5, 3.6)_
+
+### Running
+
+```bash
+# fakeroot virtualizes EUID/chown/stat; no real root needed.
+bash tests/bash/test_init_ownership_unit.sh
+bash tests/bash/test_init_ownership_property.sh
+bash tests/bash/test_init_ownership_integration.sh
+```
+
+### Result (Task 4 — against the FIXED init_pltf.sh)
+
+All three new files PASS, as do the re-run Task-1/2 tests (no regressions):
+
+- `test_init_ownership_unit.sh` — 17/17
+- `test_init_ownership_property.sh` — 30/30
+- `test_init_ownership_integration.sh` — 10/10
+- `test_init_ownership.sh` (Task 1, now fix-checking) — 15/15
+- `test_init_preservation.sh` (Task 2) — 49/49

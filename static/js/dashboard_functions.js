@@ -30,7 +30,7 @@ function stopServerlessAutoRefresh() {
 }
 
 /**
- * Load available agentic-ai-pltf-serverless-brik endpoint links into the target dropdown
+ * Load available agentic-ai-plateform-serverless-brik endpoint links into the target dropdown
  * and display them in the links panel with availability status.
  * Preserves the currently selected value in the dropdown.
  */
@@ -59,7 +59,7 @@ async function loadServerlessLinks() {
 
         if (endpoints.length === 0 && links.length === 0) {
             if (select) select.innerHTML = '<option value="">-- No endpoints available --</option>';
-            if (linksContent) linksContent.innerHTML = '<p style="color:orange;">No agentic-ai-pltf-serverless-brik endpoints are currently assigned. Please contact your administrator.</p>';
+            if (linksContent) linksContent.innerHTML = '<p style="color:orange;">No agentic-ai-plateform-serverless-brik endpoints are currently assigned. Please contact your administrator.</p>';
             return;
         }
 

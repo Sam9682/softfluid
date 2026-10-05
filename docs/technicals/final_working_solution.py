@@ -26,7 +26,7 @@ def get_platform_name():
                     return line.split('=', 1)[1].strip().strip("'\"")
     except Exception:
         pass
-    return 'agentic-ai-pltf_AI_SharedGPU_Docker_Serverless'
+    return 'agentic-ai-plateform_AI_SharedGPU_Docker_Serverless'
 
 
 PLATFORM_NAME = get_platform_name()

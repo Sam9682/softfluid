@@ -1,5 +1,5 @@
 {
-  "name": "agentic-ai-pltf-js-tests",
+  "name": "agentic-ai-plateform-js-tests",
   "version": "1.0.0",
   "private": true,
   "description": "jsdom-based test harness for the dashboard client-side JavaScript (sortable table headers feature).",

@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [ -f "${SCRIPT_DIR}/conf/deploy.ini" ]; then
     PLTF_FOLDER=$(grep -E "^PLTF_FOLDER=" "${SCRIPT_DIR}/conf/deploy.ini" 2>/dev/null | cut -d'=' -f2 | xargs)
 fi
-PLTF_FOLDER="${PLTF_FOLDER:-agentic-ai-pltf}"
+PLTF_FOLDER="${PLTF_FOLDER:-agentic-ai-plateform}"
 
 folders=("ai-beewoo" "ai-checkinatwork" "ai-foodflow" "ai-haccp" "ai-staticwebsite" "ai-transats" "${PLTF_FOLDER}")
 

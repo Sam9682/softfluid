@@ -12,7 +12,7 @@ def _get_pltf_folder():
                     return line.split('=', 1)[1].strip().strip("'\"")
     except Exception:
         pass
-    return 'agentic-ai-pltf'
+    return 'agentic-ai-plateform'
 
 PLTF_FOLDER = _get_pltf_folder()
 

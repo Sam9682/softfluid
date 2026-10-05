@@ -1,4 +1,4 @@
-# Agentic-ai-pltf — Shared GPU via Docker (Business + Technical Guide)
+# agentic-ai-plateform — Shared GPU via Docker (Business + Technical Guide)
 
 ## Professional Service Labs for OCPC Customers
 
@@ -16,11 +16,11 @@ Your customers are building AI workloads. They need GPU compute, but:
 
 ---
 
-## The Solution: agentic-ai-pltf for Baremetal Platform
+## The Solution: agentic-ai-plateform for Baremetal Platform
 
-A turnkey platform that lets your agentic-ai-pltf customers **deploy, manage, and share GPU resources** through a single interface — Web, CLI, API, or AI agents.
+A turnkey platform that lets your agentic-ai-plateform customers **deploy, manage, and share GPU resources** through a single interface — Web, CLI, API, or AI agents.
 
-### One agentic-ai-pltf Platform, Four Access Modes
+### One agentic-ai-plateform Platform, Four Access Modes
 
 |        Mode         |                 Use Case                        |
 |---------------------|-------------------------------------------------|
@@ -71,7 +71,7 @@ docker run --gpus '"device=MIG-xxx"' my-ai-model:latest
 
 ### For the Sales Conversation
 
-|                 Customer Pain                |                        agentic-ai-pltf Answer                                         |                      OVH Value                       |
+|                 Customer Pain                |                        agentic-ai-plateform Answer                                         |                      OVH Value                       |
 |----------------------------------------------|------------------------------------------------------|-----------------------------------------------|
 | "Our AI team can't wait for IT to provision" | Self-service web UI + API for instant GPU access     | Reduced support tickets, faster adoption               |
 | "We need AI agents to deploy autonomously"   | MCP protocol + REST API for GenAI automation         | Future-proof positioning in AI infrastructure  |
@@ -136,7 +136,7 @@ docker run --gpus '"device=MIG-xxx"' my-ai-model:latest
 
 ---
 
-*agentic-ai-pltf — Making GPU compute accessible, shareable, and autonomous.*
+*agentic-ai-plateform — Making GPU compute accessible, shareable, and autonomous.*
 
 ---
 

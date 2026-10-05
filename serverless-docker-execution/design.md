@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document describes the technical design for the Serverless Docker Execution Service feature. The architecture follows the existing agentic-ai-pltf Docker AI patterns: Flask Blueprints for API routes, PostgreSQL via the shared `db_manager`, and systemd for service management. A new module `agentic-ai-pltf-serverless-brik` is introduced as the API layer, while a separate `serverless-worker.service` handles container execution.
+This document describes the technical design for the Serverless Docker Execution Service feature. The architecture follows the existing agentic-ai-plateform Docker AI patterns: Flask Blueprints for API routes, PostgreSQL via the shared `db_manager`, and systemd for service management. A new module `agentic-ai-plateform-serverless-brik` is introduced as the API layer, while a separate `serverless-worker.service` handles container execution.
 
 ## Architecture Overview
 
@@ -317,7 +317,7 @@ class PodmanRuntime(ContainerRuntime):
 
 ```ini
 [Unit]
-Description=agentic-ai-pltf Serverless Worker Service
+Description=agentic-ai-plateform Serverless Worker Service
 After=postgresql.service docker.service
 Requires=postgresql.service
 
@@ -325,12 +325,12 @@ Requires=postgresql.service
 Type=simple
 User=ubuntu
 Group=ubuntu
-WorkingDirectory=/home/ubuntu/agentic-ai-pltf
+WorkingDirectory=/home/ubuntu/agentic-ai-plateform
 ExecStart=/usr/bin/python3 -m src.serverless.worker
 Restart=always
 RestartSec=5
 Environment=WORKER_ID=worker-001
-Environment=PYTHONPATH=/home/ubuntu/agentic-ai-pltf
+Environment=PYTHONPATH=/home/ubuntu/agentic-ai-plateform
 
 [Install]
 WantedBy=multi-user.target
@@ -450,9 +450,9 @@ def cleanup_old_logs():
 
 Run via the worker service on a daily schedule or as a separate cron job.
 
-## Integration with agentic-ai-pltf-serverless-brik
+## Integration with agentic-ai-plateform-serverless-brik
 
-The `agentic-ai-pltf-serverless-brik` module is cloned from GitHub and integrated as:
+The `agentic-ai-plateform-serverless-brik` module is cloned from GitHub and integrated as:
 
 1. Git submodule or pip-installable package
 2. Provides the Flask Blueprint (`serverless_bp`) with all `/api/jobs` endpoints

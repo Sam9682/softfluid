@@ -1,11 +1,11 @@
-# AI-Powered-Store
+# Agentic AI Platform
 
 ## Objective
 
-AI-Powered-Store is a centralized application deployment and management platform designed for GenAI agents. It provides automated deployment, lifecycle management, and SSO authentication for web applications through multiple interfaces (Web, CLI, API, MCP).
+agentic-ai-plateform is a centralized application deployment and management platform designed for GenAI agents. It provides automated deployment, lifecycle management, and SSO authentication for web applications through multiple interfaces (Web, CLI, API, MCP).
 
 **Core Purpose**: Enable GenAI agents to autonomously deploy, manage, and access web applications without human intervention.
-8
+
 ## Features
 
 - 🔐 User registration and authentication with Gitea integration
@@ -115,8 +115,11 @@ pip install -r requirements.txt
 # 2. Initialize database
 python3 ./scripts/controller_cli.py init-db
 
-# 3. Start application
+# 3a. Start the application (development)
 python3 src/ControlPlanFlaskApp_postgres.py
+
+# 3b. Start the application (production, via the WSGI entry point)
+gunicorn -c gunicorn.conf.py wsgi:application
 ```
 
 ## Configuration
@@ -134,8 +137,8 @@ FLASK_ENV="production"
 vim ./conf/deploy.ini
 
 # Key settings:
-DOMAIN="www.swautomorph.com"
-EMAIL="admin@swautomorph.com"
+DOMAIN="www.agentic-ai-plateform.com"
+EMAIL="admin@agentic-ai-plateform.com"
 GITEA_VERSION="1.21.3"
 MODSECURITY_CONF_DIR="/etc/nginx/modsec"
 ```
@@ -163,7 +166,7 @@ python3 ./scripts/controller_cli.py db-health
 
 ### User Registration
 ```bash
-curl -X POST https://www.swautomorph.com/register \
+curl -X POST https://www.agentic-ai-plateform.com/register \
   -H "Content-Type: application/json" \
   -d '{"username":"agent","email":"agent@example.com","password":"secure_pass","first_name":"AI","last_name":"Agent"}'
 ```
@@ -171,22 +174,22 @@ curl -X POST https://www.swautomorph.com/register \
 ### Application Management
 ```bash
 # List applications
-curl https://www.swautomorph.com/api/applications
+curl https://www.agentic-ai-plateform.com/api/applications
 
 # Add application (admin required)
-curl -X POST https://www.swautomorph.com/api/applications \
+curl -X POST https://www.agentic-ai-plateform.com/api/applications \
   -H "Content-Type: application/json" \
   -H "Cookie: session=your-session-cookie" \
   -d '{"name":"MyApp","description":"My Application","git_url":"https://github.com/user/myapp.git"}'
 
 # Deploy application with streaming
-curl -X POST https://www.swautomorph.com/api/deployments \
+curl -X POST https://www.agentic-ai-plateform.com/api/deployments \
   -H "Content-Type: application/json" \
   -H "Cookie: session=your-session-cookie" \
   -d '{"application_name":"MyApp","action":"clone","git_url":"https://github.com/user/myapp.git","server_id":1,"stream":true}'
 
 # Application lifecycle management
-curl -X POST https://www.swautomorph.com/api/deployments \
+curl -X POST https://www.agentic-ai-plateform.com/api/deployments \
   -H "Content-Type: application/json" \
   -H "Cookie: session=your-session-cookie" \
   -d '{"application_name":"MyApp","action":"start"}'
@@ -366,6 +369,10 @@ curl -X POST https://www.swautomorph.com/api/deployments \
 ```
 
 ### Enhanced CLI Interface
+
+The CLI is a `click` command group; run `python3 ./scripts/controller_cli.py --help`
+to list every command.
+
 ```bash
 # Register user
 python3 ./scripts/controller_cli.py register --username agent --email agent@example.com --password secure_pass
@@ -379,14 +386,41 @@ python3 ./scripts/controller_cli.py add-app --name MyApp --url https://myapp.com
 # Validate SSO token
 python3 ./scripts/controller_cli.py validate-token --token your-sso-token
 
-# Database health check with detailed statistics
+# Initialize the PostgreSQL database
+python3 ./scripts/controller_cli.py init-db
+
+# Database health check / status
 python3 ./scripts/controller_cli.py db-health
+python3 ./scripts/controller_cli.py db-status --show-env
+
+# Inspect the database
+python3 ./scripts/controller_cli.py list-tables
+python3 ./scripts/controller_cli.py describe-table user_applications
+python3 ./scripts/controller_cli.py query-table applications --limit 10
 
 # Mount S3 storage for backups
 python3 ./scripts/controller_cli.py mount-s3fs softfluid /mnt/s3
 
-# Initialize database with thread-safe operations
-python3 ./scripts/controller_cli.py init-db
+# Nginx and platform/replication operations
+python3 ./scripts/controller_cli.py update-nginx-locations
+python3 ./scripts/controller_cli.py platform-status
+python3 ./scripts/controller_cli.py replication-sync-status
+
+# Install the control plane as a systemd service
+python3 ./scripts/controller_cli.py install-as-systemctl-service
+```
+
+#### Onboarding: sandbox and deploy-template commands
+
+```bash
+# Demo sandbox lifecycle (Demo_User + seeded sample applications)
+python3 ./scripts/controller_cli.py sandbox provision
+python3 ./scripts/controller_cli.py sandbox reset
+python3 ./scripts/controller_cli.py sandbox teardown
+
+# Deploy templates
+python3 ./scripts/controller_cli.py templates list
+python3 ./scripts/controller_cli.py templates deploy fastapi-starter my-api
 ```
 
 ### MCP Protocol
@@ -446,7 +480,7 @@ python3 ./scripts/controller_cli.py db-health
 - **Gitea Server**: https://www.swautomorph.com/gitea (port 3000)
 - **MCP Server**: Available via scripts/mcp_server.py
 - **Database**: **PostgreSQL with connection pooling** (enterprise-grade performance and scalability)
-- **Deployment Directory**: /home/ubuntu/deployments/[username]/[appname]
+- **Deployment Directory**: /home/<LINUX_USER_INSTALLATION>/deployments/[username]/[appname] (user from conf/deploy.ini)
 - **SSL Certificates**: ssl/ directory
 - **Logs**: logs/ directory with daily rotation and Gunicorn logging
 - **Backups**: softfluid/db/backup/ with S3 sync and hourly automated backups
@@ -473,40 +507,51 @@ python3 ./scripts/controller_cli.py db-health
 │   │   ├── templates_routes.py   # Deploy Templates REST API
 │   │   ├── wizard_routes.py      # Onboarding setup wizard API
 │   │   └── sandbox_routes.py     # Sandbox demo provision/reset/teardown
-│   ├── serverless/        # Serverless execution engine
-│   ├── ControlPlanFlaskApp_postgres.py    # Main Flask application
+│   ├── serverless/        # Serverless execution engine (worker, container runtime, log cleanup)
+│   ├── wizard/            # Onboarding setup wizard (setup_wizard.py, ssl_configurator.py)
+│   ├── ControlPlanFlaskApp_postgres.py    # Main Flask application factory
 │   ├── database_postgres.py      # PostgreSQL database manager with connection pooling
-│   ├── database.py               # Legacy SQLite database manager (migration compatibility)
+│   ├── query_converter.py        # SQL dialect conversion helper
+│   ├── db_sync.py                # Database sync helpers for replication
+│   ├── db_health.py              # Database health & statistics
 │   ├── nginx_manager.py          # Dynamic nginx location management
 │   ├── orchestrator.py           # Application orchestration & reconciliation
 │   ├── replication_manager.py    # Peer-to-peer database replication
 │   ├── platform_discovery.py     # Platform capability discovery
 │   ├── template_catalog.py       # Deploy Templates catalog (single source of truth)
 │   ├── template_deploy.py        # Surface-agnostic template deploy service
+│   ├── sandbox_manager.py        # Sandbox demo provision/reset/teardown
 │   ├── configuration_writer.py   # Safe writer for conf/deploy.ini (onboarding wizard)
-│   ├── config.py                 # Configuration & multi-language
+│   ├── email_service.py          # Email delivery (password reset, 2FA)
+│   ├── create_gitea_repo.py      # Gitea repository provisioning
+│   ├── gitea_config.py           # Gitea configuration helpers
+│   ├── config_postgres.py        # Configuration & multi-language
 │   └── auth.py                   # Authentication utilities
-├── migration/             # Database migration scripts
-│   ├── add_serverless_jobs.sql          # Serverless jobs schema
-│   ├── add_mig_gpu.sql                  # MIG GPU tables & server flag
-│   ├── add_password_reset_and_2fa.sql   # Security features schema
-│   ├── add_deploy_templates.sql         # Deploy templates catalog & sandbox labeling
-│   ├── add_extended_ports_to_user_applications.sql # 12-port allocation per app
-│   └── ...                              # Other migrations
-├── scripts/               # CLI tools and utilities
-│   ├── controller_cli.py            # Command-line interface
+├── migration/             # Database migration scripts (SQLite→PostgreSQL + schema evolution)
+│   ├── add_serverless_jobs.sql                      # Serverless jobs schema
+│   ├── add_target_link_to_serverless_jobs.sql       # Serverless job target link
+│   ├── add_mig_gpu.sql                              # MIG GPU tables & server flag
+│   ├── add_password_reset_and_2fa.sql               # Security features schema
+│   ├── add_deploy_templates.sql                     # Deploy templates catalog & sandbox labeling
+│   ├── add_extended_ports_to_user_applications.sql  # 12-port allocation per app
+│   ├── add_backups_history_to_deployments.sql       # Backup history tracking
+│   ├── add_url_to_applications.sql                  # Application URL column
+│   └── ...                                          # Other migrations & fixups
+├── scripts/               # CLI tools, utilities, and Python tests
+│   ├── controller_cli.py         # Command-line interface (click)
+│   ├── orchestrator_cli.py       # Orchestrator CLI
 │   ├── mcp_server.py             # Model Context Protocol server
 │   ├── sync_nginx_locations.py   # Sync nginx locations from database
-│   └── postgresql_schema.sql     # PostgreSQL schema definition
-├── tests/                # Test suite (pytest)
-│   ├── test_gpu_parsers.py              # MIG instance parser tests
-│   ├── test_parse_mig_profiles.py       # MIG profile parser tests
-│   ├── test_validate_profile_ids.py     # Profile ID validation tests
-│   ├── test_gpu_enabled_endpoint.py     # GPU enabled toggle tests
-│   ├── test_gpu_delete_instances.py     # GPU instance destruction tests
-│   ├── test_serverless_routes.py        # Serverless API tests
-│   ├── test_container_runtime.py        # Container runtime tests
-│   └── test_worker.py                   # Worker process tests
+│   ├── mount_s3fs.py             # Mount S3 storage for backups
+│   ├── controlplan_service.py    # systemd service wrapper
+│   ├── generate_ssl.sh           # Self-signed SSL certificate generator
+│   ├── setup_letsencrypt.sh      # Let's Encrypt certificate setup
+│   ├── install_worker_service.sh # Install the serverless worker service
+│   ├── postgresql_schema.sql     # PostgreSQL schema definition
+│   └── test_*.py                 # pytest suites (platform, orchestrator, nginx, backups)
+├── tests/                 # Additional test suites
+│   ├── bash/             # Shell tests for init_pltf.sh (ownership, preservation, path)
+│   └── js/               # Dashboard JavaScript tests (sorting, highlight, headers)
 ├── templates/            # HTML templates with EN/FR support
 │   ├── shared_gpu.html           # MIG GPU management page
 │   ├── dashboard.html            # Main dashboard
@@ -515,15 +560,27 @@ python3 ./scripts/controller_cli.py db-health
 ├── ssl/                  # SSL certificates
 ├── logs/                 # Application logs with Gunicorn support
 ├── shared/               # Context files for virtual agents
-├── docs/                 # Comprehensive documentation
+├── docs/                  # Comprehensive documentation
 │   ├── USER_GUIDE.md             # AI agent usage guide
 │   ├── ARCHITECTURE_GUIDE.md     # System architecture
 │   ├── DEPLOYMENT_GUIDE.md       # Deployment procedures
-│   ├── DATABASE_IMPROVEMENTS.md  # Database enhancements
-│   ├── NGINX_DYNAMIC_LOCATIONS.md # Dynamic nginx locations guide
-│   └── VIRTUAL_AGENTS_API.md     # Virtual agents API reference
-├── conf/                 # Configuration files
-├── init_pltf.sh          # Platform initialization (Docker, NVIDIA drivers, MIG)
+│   ├── INIT_PLATFORM.md          # Platform initialization guide
+│   ├── SERVERLESS.md             # Serverless Docker execution guide
+│   ├── SHARE_GPU_DOCKER.md       # MIG shared GPU guide
+│   ├── PLATFORM_OVERVIEW.md      # Platform overview
+│   ├── LIST_OF_APP_AVAILABLE.md  # Deploy template catalog reference
+│   └── technicals/               # Technical deep-dive documents
+├── conf/                 # Configuration files (deploy.ini.template, serverless.ini, default_apps)
+├── systemd/              # systemd unit files (serverless worker, control plane)
+├── wsgi.py               # WSGI production entry point (gunicorn)
+├── gunicorn.conf.py      # Gunicorn configuration
+├── docker-compose.yml    # Docker Compose stack
+├── Dockerfile            # Application image
+├── Dockerfile.postgres   # PostgreSQL image
+├── requirements.txt      # Python dependencies
+├── setup_postgresql.sh   # PostgreSQL setup helper
+├── setup_modsecurity_config.sh # ModSecurity WAF configuration
+├── init_pltf.sh          # Platform initialization (Docker, NVIDIA drivers, MIG, Kata runtime)
 └── deployControlPlan.sh  # Main deployment script
 ```
 
@@ -562,9 +619,9 @@ python3 ./scripts/controller_cli.py db-health
 # Port conflicts
 sudo netstat -tulpn | grep -E ':(80|443|3000|5000)'
 
-# Permission issues
-sudo chown -R ubuntu:ubuntu /home/ubuntu/deployments/
-sudo chown -R ubuntu:ubuntu /home/ubuntu/<PLTF_FOLDER>/
+# Permission issues (replace <user> with LINUX_USER_INSTALLATION from conf/deploy.ini)
+sudo chown -R <user>:<user> /home/<user>/deployments/
+sudo chown -R <user>:<user> /home/<user>/<PLTF_FOLDER>/
 
 # Database issues
 python3 ./scripts/controller_cli.py db-health
@@ -587,7 +644,8 @@ docker system prune -f
 # Complete reset (Local)
 sudo systemctl stop nginx gitea
 sudo rm -rf /etc/nginx/sites-enabled/<PLTF_FOLDER>
-rm -rf softfluid/db/ai_swautomorph.db
+# Drop the PostgreSQL database (prompts for confirmation)
+python3 ./scripts/controller_cli.py delete-db
 
 # Restart deployment
 ./deployControlPlan.sh start

@@ -30,7 +30,7 @@ function stopServerlessAutoRefresh() {
 }
 
 /**
- * Load available agentic-ai-pltf-serverless-brik endpoint links into the target dropdown
+ * Load available agentic-ai-plateform-serverless-brik endpoint links into the target dropdown
  * and display them in the links panel with availability status.
  * Preserves the currently selected value in the dropdown.
  */

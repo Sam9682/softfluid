@@ -1,20 +1,20 @@
 # Primary domain used by nginx server_name and for generating application URLs.
-DOMAIN=agentic-ai-pltf.com
+DOMAIN=agentic-ai-plateform.com
 
 # Platform display name shown in the installer banner and UI. Persisted from
 # init_pltf.sh (prompt or env) and read as a default via conf precedence.
-PLTF_NAME=agentic-ai-pltf
+PLTF_NAME=agentic-ai-plateform
 
 # Platform folder slug (lowercase letters, digits and hyphens). Used as the
 # clone target directory and in installation paths. Persisted by init_pltf.sh.
-PLTF_FOLDER=agentic-ai-pltf
+PLTF_FOLDER=agentic-ai-plateform
 
 # Platform version string.
 VERSION=0.0.1
 
 # Main repository clone URL. Default source for init_pltf.sh when REPO_URL is
 # not provided via environment variable.
-REPO_URL=https://github.com/Sam9682/agentic-ai-pltf.git
+REPO_URL=https://github.com/Sam9682/agentic-ai-plateform.git
 
 # Shared submodule URL added as the 'shared' git submodule by init_pltf.sh.
 # Default source when SUBMODULE_URL is not provided via environment variable.
@@ -30,5 +30,5 @@ LINUX_USER_INSTALLATION=psmc
 
 # Secondary domains (comma-separated list)
 # Format: "domain1:server_names:proxy_pass,domain2:server_names:proxy_pass"
-# Example: "agentic-ai-pltf.com:agentic-ai-pltf.com www.agentic-ai-pltf.com:www.agentic-ai-pltff.com"
+# Example: "agentic-ai-plateform.com:agentic-ai-plateform.com www.agentic-ai-plateform.com:www.agentic-ai-plateformf.com"
 SECONDARY_DOMAINS=

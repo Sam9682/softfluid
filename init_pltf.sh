@@ -167,11 +167,11 @@ _resolve_default() {
 # Compute the four platform-identity DEFAULT_* variables, each resolved
 # independently through _resolve_default. The env-var and config-key names
 # match (PLTF_FOLDER, PLTF_NAME, REPO_URL, SUBMODULE_URL) and the fallbacks
-# are the original hardcoded agentic-ai-pltf strings.
+# are the original hardcoded agentic-ai-plateform strings.
 resolve_platform_defaults() {
-    DEFAULT_PLTF_FOLDER="$(_resolve_default  PLTF_FOLDER   PLTF_FOLDER   "agentic-ai-pltf")"
-    DEFAULT_PLTF_NAME="$(_resolve_default    PLTF_NAME     PLTF_NAME     "agentic-ai-pltf")"
-    DEFAULT_REPO_URL="$(_resolve_default     REPO_URL      REPO_URL      "https://github.com/Sam9682/agentic-ai-pltf.git")"
+    DEFAULT_PLTF_FOLDER="$(_resolve_default  PLTF_FOLDER   PLTF_FOLDER   "agentic-ai-plateform")"
+    DEFAULT_PLTF_NAME="$(_resolve_default    PLTF_NAME     PLTF_NAME     "agentic-ai-plateform")"
+    DEFAULT_REPO_URL="$(_resolve_default     REPO_URL      REPO_URL      "https://github.com/Sam9682/agentic-ai-plateform.git")"
     DEFAULT_SUBMODULE_URL="$(_resolve_default SUBMODULE_URL SUBMODULE_URL "git@github.com:Sam9682/ai-swautomorph--shared.git")"
     DEFAULT_INSTALL_DIR="$(_resolve_default  INSTALL_DIR   INSTALL_DIR   "../")"
 }

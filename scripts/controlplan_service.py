@@ -6,7 +6,7 @@ the install command (``controller_cli.py install-as-systemctl-service``)
 and the committed fallback artifact never diverge. The install user and all
 ``/home/<user>/<folder>`` paths are derived from ``LINUX_USER_INSTALLATION``
 and ``PLTF_FOLDER`` in ``conf/deploy.ini``; the canonical fallbacks (``psmc``
-and ``agentic-ai-pltf``) match config_postgres.py, gunicorn.conf.py,
+and ``agentic-ai-plateform``) match config_postgres.py, gunicorn.conf.py,
 deployControlPlan.sh and the shell scripts.
 
 Dependency-free (stdlib only) so it is trivially importable and testable.
@@ -20,7 +20,7 @@ import os
 
 # Canonical fallbacks, identical to every other entry point.
 DEFAULT_LINUX_USER = 'psmc'
-DEFAULT_PLTF_FOLDER = 'agentic-ai-pltf'
+DEFAULT_PLTF_FOLDER = 'agentic-ai-plateform'
 
 SERVICE_FILENAME = 'swautomorph-controlplan.service'
 
